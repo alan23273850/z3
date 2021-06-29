@@ -84,3 +84,5 @@ examples/**/obj
 CMakeSettings.json
 # Editor temp files
 *.swp
+# Statistics
+#benchmarks/statistics*

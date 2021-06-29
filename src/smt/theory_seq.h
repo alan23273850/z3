@@ -220,6 +220,19 @@ namespace smt {
             literal len_gt() const { return m_len_gt; }
         };
 
+        class rc {
+            expr_ref                 m_term;
+            expr_ref                  m_re;
+        public:
+            rc(expr_ref const& term, expr_ref const& re):
+                    m_term(term),
+                    m_re(re) {}
+
+            expr_ref const& term() const { return m_term; }
+            expr_ref const& re() const { return m_re; }
+        };
+
+
         class apply {
         public:
             virtual ~apply() {}
@@ -331,6 +344,8 @@ namespace smt {
         scoped_vector<depeq>       m_eqs;        // set of current equations.
         scoped_vector<ne>          m_nqs;        // set of current disequalities.
         scoped_vector<nc>          m_ncs;        // set of non-contains constraints.
+        scoped_vector<rc>          m_rcs;        // set of regular experssion constraints.
+
         scoped_vector<expr*>       m_lts;        // set of asserted str.<, str.<= literals
         bool                       m_lts_checked; 
         unsigned                   m_eq_id;
@@ -419,6 +434,7 @@ namespace smt {
         bool has_len_offset(expr_ref_vector const& ls, expr_ref_vector const& rs, int & diff);
         
         // final check 
+        void block_curr_assignment();
         bool simplify_and_solve_eqs();   // solve unitary equalities
         bool reduce_length_eq();
         bool branch_unit_variable();     // branch on XYZ = abcdef

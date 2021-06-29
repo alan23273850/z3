@@ -306,6 +306,7 @@ void theory_seq::init() {
 }
 
 #define TRACEFIN(s) { TRACE("seq", tout << ">>" << s << "\n";); IF_VERBOSE(20, verbose_stream() << s << "\n"); }
+#define FINALCHECK(STREAM) { if (is_debug_enabled("fc")) { std::cout << STREAM } }
 
 struct scoped_enable_trace {
     scoped_enable_trace() {
@@ -316,93 +317,121 @@ struct scoped_enable_trace {
     }
 };
 
+void theory_seq::block_curr_assignment() {
+    FINALCHECK(__LINE__ << " enter " << __FUNCTION__ << std::endl;)
+
+    expr *refinement = nullptr;
+    FINALCHECK(__LINE__ << "[Refinement]\nformulas:\n";)
+    for (const auto& we : m_eqs) {
+        expr *const e = m.mk_eq(mk_concat(we.ls), mk_concat(we.rs));
+        refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
+    }
+    for (const auto& wi : m_nqs) {
+        expr *const e = m.mk_not(m.mk_eq(wi.l(), wi.r()));
+        refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
+    }
+    for (const auto& rc : m_rcs) {
+        expr *const e = m_util.re.mk_in_re(rc.term(),rc.re());
+        refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
+    }
+    for (const auto& nc : m_ncs){
+        expr *const e = m.mk_not(nc.contains());
+        refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
+    }
+    if (refinement != nullptr){
+        add_axiom(mk_literal(m.mk_not(refinement)));
+        FINALCHECK(mk_pp(refinement,m) << '\n';)
+
+    }
+    FINALCHECK(__LINE__ << " leave " << __FUNCTION__ << std::endl;)
+}
+
 final_check_status theory_seq::final_check_eh() {
-    if (!m_has_seq) {
+    FINALCHECK("level: " << ctx.get_scope_level() << "\n";)
+
+    if (!m_has_seq || (m_eqs.empty() && m_nqs.empty() && m_ncs.empty() && m_rcs.empty()) ) {
         return FC_DONE;
     }
-    
+
     m_new_propagation = false;
     TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
     TRACE("seq_verbose", ctx.display(tout););
 
-    if (simplify_and_solve_eqs()) {
-        ++m_stats.m_solve_eqs;
-        TRACEFIN("solve_eqs");
-        return FC_CONTINUE;
-    }    
-    if (check_lts()) {
-        TRACEFIN("check_lts");
-        return FC_CONTINUE;
-    }
-    if (solve_nqs(0)) {
-        ++m_stats.m_solve_nqs;
-        TRACEFIN("solve_nqs");
-        return FC_CONTINUE;
-    }
-    if (m_regex.propagate()) {
-        TRACEFIN("regex propagate");
-        return FC_CONTINUE;
-    }
-    if (check_contains()) {
-        ++m_stats.m_propagate_contains;
-        TRACEFIN("propagate_contains");
-        return FC_CONTINUE;
-    }
-    if (fixed_length(true)) {
-        ++m_stats.m_fixed_length;
-        TRACEFIN("zero_length");
-        return FC_CONTINUE;
-    }
-    if (get_fparams().m_split_w_len && len_based_split()) {
-        ++m_stats.m_branch_variable;
-        TRACEFIN("split_based_on_length");
-        return FC_CONTINUE;
-    }
-    if (fixed_length()) {
-        ++m_stats.m_fixed_length;
-        TRACEFIN("fixed_length");
-        return FC_CONTINUE;
-    }
-    if (check_int_string()) {
-        ++m_stats.m_int_string;
-        TRACEFIN("int_string");
-        return FC_CONTINUE;
-    }
-    if (reduce_length_eq()) {
-        ++m_stats.m_branch_variable;
-        TRACEFIN("reduce_length");
-        return FC_CONTINUE;
-    }
-    if (branch_unit_variable()) {
-        ++m_stats.m_branch_variable;
-        TRACEFIN("branch_unit_variable");
-        return FC_CONTINUE;
-    }
-    if (branch_binary_variable()) {
-        ++m_stats.m_branch_variable;
-        TRACEFIN("branch_binary_variable");
-        return FC_CONTINUE;
-    }
-    if (branch_variable()) {
-        ++m_stats.m_branch_variable;
-        TRACEFIN("branch_variable");
-        return FC_CONTINUE;
-    }
-    if (check_length_coherence()) {
-        ++m_stats.m_check_length_coherence;
-        TRACEFIN("check_length_coherence");
-        return FC_CONTINUE;
-    }
-    if (!check_extensionality()) {
-        ++m_stats.m_extensionality;
-        TRACEFIN("extensionality");
-        return FC_CONTINUE;
-    }
-    if (branch_nqs()) {
-        ++m_stats.m_branch_nqs;
-        TRACEFIN("branch_ne");
-        return FC_CONTINUE;
-    }
+    // if (simplify_and_solve_eqs()) {
+    //     ++m_stats.m_solve_eqs;
+    //     TRACEFIN("solve_eqs");
+    //     return FC_CONTINUE;
+    // }    
+    // if (check_lts()) {
+    //     TRACEFIN("check_lts");
+    //     return FC_CONTINUE;
+    // }
+    // if (solve_nqs(0)) {
+    //     ++m_stats.m_solve_nqs;
+    //     TRACEFIN("solve_nqs");
+    //     return FC_CONTINUE;
+    // }
+
+    // if (check_contains()) {
+    //     ++m_stats.m_propagate_contains;
+    //     TRACEFIN("propagate_contains");
+    //     return FC_CONTINUE;
+    // }
+    // if (fixed_length(true)) {
+    //     ++m_stats.m_fixed_length;
+    //     TRACEFIN("zero_length");
+    //     return FC_CONTINUE;
+    // }
+    // if (get_fparams().m_split_w_len && len_based_split()) {
+    //     ++m_stats.m_branch_variable;
+    //     TRACEFIN("split_based_on_length");
+    //     return FC_CONTINUE;
+    // }
+    // if (fixed_length()) {
+    //     ++m_stats.m_fixed_length;
+    //     TRACEFIN("fixed_length");
+    //     return FC_CONTINUE;
+    // }
+    // if (check_int_string()) {
+    //     ++m_stats.m_int_string;
+    //     TRACEFIN("int_string");
+    //     return FC_CONTINUE;
+    // }
+    // if (reduce_length_eq()) {
+    //     ++m_stats.m_branch_variable;
+    //     TRACEFIN("reduce_length");
+    //     return FC_CONTINUE;
+    // }
+    // if (branch_unit_variable()) {
+    //     ++m_stats.m_branch_variable;
+    //     TRACEFIN("branch_unit_variable");
+    //     return FC_CONTINUE;
+    // }
+    // if (branch_binary_variable()) {
+    //     ++m_stats.m_branch_variable;
+    //     TRACEFIN("branch_binary_variable");
+    //     return FC_CONTINUE;
+    // }
+    // if (branch_variable()) {
+    //     ++m_stats.m_branch_variable;
+    //     TRACEFIN("branch_variable");
+    //     return FC_CONTINUE;
+    // }
+    // if (check_length_coherence()) {
+    //     ++m_stats.m_check_length_coherence;
+    //     TRACEFIN("check_length_coherence");
+    //     return FC_CONTINUE;
+    // }
+    // if (!check_extensionality()) {
+    //     ++m_stats.m_extensionality;
+    //     TRACEFIN("extensionality");
+    //     return FC_CONTINUE;
+    // }
+    // if (branch_nqs()) {
+    //     ++m_stats.m_branch_nqs;
+    //     TRACEFIN("branch_ne");
+    //     return FC_CONTINUE;
+    // }
 
     if (m_unhandled_expr) {
         TRACEFIN("give_up");
@@ -2890,7 +2919,18 @@ void theory_seq::assign_eh(bool_var v, bool is_true) {
         }
     }
     else if (m_util.str.is_in_re(e)) {
-        m_regex.propagate_in_re(lit);
+        expr *term = nullptr, *re = nullptr;
+        VERIFY(m_util.str.is_in_re(e, term, re));
+        ast_manager& m = get_manager();
+
+        expr_ref re_ref{re, m};
+        context& ctx = get_context();
+        literal l = ctx.get_literal(e);
+        if (!is_true) {
+            re_ref = m_util.re.mk_complement(re);
+            l.neg();
+        }
+        m_rcs.push_back(rc({term,m}, re_ref));
     }
     else if (m_sk.is_digit(e)) {
         // no-op
@@ -3005,6 +3045,7 @@ void theory_seq::push_scope_eh() {
     m_eqs.push_scope();
     m_nqs.push_scope();
     m_ncs.push_scope();
+    m_rcs.push_scope();
     m_lts.push_scope();
     m_regex.push_scope();
 }
@@ -3018,6 +3059,7 @@ void theory_seq::pop_scope_eh(unsigned num_scopes) {
     m_eqs.pop_scope(num_scopes);
     m_nqs.pop_scope(num_scopes);
     m_ncs.pop_scope(num_scopes);
+    m_rcs.pop_scope(num_scopes);
     m_lts.pop_scope(num_scopes);
     m_regex.pop_scope(num_scopes);
     m_rewrite.reset();    
