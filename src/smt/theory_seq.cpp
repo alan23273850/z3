@@ -350,7 +350,7 @@ void theory_seq::block_curr_assignment() {
 final_check_status theory_seq::final_check_eh() {
     FINALCHECK("level: " << ctx.get_scope_level() << "\n";)
 
-    if (!m_has_seq || (m_eqs.empty() && m_nqs.empty() && m_ncs.empty() && m_rcs.empty()) ) {
+    if (!m_has_seq) {
         return FC_DONE;
     }
 
@@ -358,81 +358,81 @@ final_check_status theory_seq::final_check_eh() {
     TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
     TRACE("seq_verbose", ctx.display(tout););
 
-    // if (simplify_and_solve_eqs()) {
-    //     ++m_stats.m_solve_eqs;
-    //     TRACEFIN("solve_eqs");
-    //     return FC_CONTINUE;
-    // }    
-    // if (check_lts()) {
-    //     TRACEFIN("check_lts");
-    //     return FC_CONTINUE;
-    // }
-    // if (solve_nqs(0)) {
-    //     ++m_stats.m_solve_nqs;
-    //     TRACEFIN("solve_nqs");
-    //     return FC_CONTINUE;
-    // }
-
-    // if (check_contains()) {
-    //     ++m_stats.m_propagate_contains;
-    //     TRACEFIN("propagate_contains");
-    //     return FC_CONTINUE;
-    // }
-    // if (fixed_length(true)) {
-    //     ++m_stats.m_fixed_length;
-    //     TRACEFIN("zero_length");
-    //     return FC_CONTINUE;
-    // }
-    // if (get_fparams().m_split_w_len && len_based_split()) {
-    //     ++m_stats.m_branch_variable;
-    //     TRACEFIN("split_based_on_length");
-    //     return FC_CONTINUE;
-    // }
-    // if (fixed_length()) {
-    //     ++m_stats.m_fixed_length;
-    //     TRACEFIN("fixed_length");
-    //     return FC_CONTINUE;
-    // }
-    // if (check_int_string()) {
-    //     ++m_stats.m_int_string;
-    //     TRACEFIN("int_string");
-    //     return FC_CONTINUE;
-    // }
-    // if (reduce_length_eq()) {
-    //     ++m_stats.m_branch_variable;
-    //     TRACEFIN("reduce_length");
-    //     return FC_CONTINUE;
-    // }
-    // if (branch_unit_variable()) {
-    //     ++m_stats.m_branch_variable;
-    //     TRACEFIN("branch_unit_variable");
-    //     return FC_CONTINUE;
-    // }
-    // if (branch_binary_variable()) {
-    //     ++m_stats.m_branch_variable;
-    //     TRACEFIN("branch_binary_variable");
-    //     return FC_CONTINUE;
-    // }
-    // if (branch_variable()) {
-    //     ++m_stats.m_branch_variable;
-    //     TRACEFIN("branch_variable");
-    //     return FC_CONTINUE;
-    // }
-    // if (check_length_coherence()) {
-    //     ++m_stats.m_check_length_coherence;
-    //     TRACEFIN("check_length_coherence");
-    //     return FC_CONTINUE;
-    // }
-    // if (!check_extensionality()) {
-    //     ++m_stats.m_extensionality;
-    //     TRACEFIN("extensionality");
-    //     return FC_CONTINUE;
-    // }
-    // if (branch_nqs()) {
-    //     ++m_stats.m_branch_nqs;
-    //     TRACEFIN("branch_ne");
-    //     return FC_CONTINUE;
-    // }
+//     if (simplify_and_solve_eqs()) {
+//         ++m_stats.m_solve_eqs;
+//         TRACEFIN("solve_eqs");
+//         return FC_CONTINUE;
+//     }
+//     if (check_lts()) {
+//         TRACEFIN("check_lts");
+//         return FC_CONTINUE;
+//     }
+//     if (solve_nqs(0)) {
+//         ++m_stats.m_solve_nqs;
+//         TRACEFIN("solve_nqs");
+//         return FC_CONTINUE;
+//     }
+//
+//     if (check_contains()) {
+//         ++m_stats.m_propagate_contains;
+//         TRACEFIN("propagate_contains");
+//         return FC_CONTINUE;
+//     }
+//     if (fixed_length(true)) {
+//         ++m_stats.m_fixed_length;
+//         TRACEFIN("zero_length");
+//         return FC_CONTINUE;
+//     }
+//     if (get_fparams().m_split_w_len && len_based_split()) {
+//         ++m_stats.m_branch_variable;
+//         TRACEFIN("split_based_on_length");
+//         return FC_CONTINUE;
+//     }
+//     if (fixed_length()) {
+//         ++m_stats.m_fixed_length;
+//         TRACEFIN("fixed_length");
+//         return FC_CONTINUE;
+//     }
+//     if (check_int_string()) {
+//         ++m_stats.m_int_string;
+//         TRACEFIN("int_string");
+//         return FC_CONTINUE;
+//     }
+//     if (reduce_length_eq()) {
+//         ++m_stats.m_branch_variable;
+//         TRACEFIN("reduce_length");
+//         return FC_CONTINUE;
+//     }
+//     if (branch_unit_variable()) {
+//         ++m_stats.m_branch_variable;
+//         TRACEFIN("branch_unit_variable");
+//         return FC_CONTINUE;
+//     }
+//     if (branch_binary_variable()) {
+//         ++m_stats.m_branch_variable;
+//         TRACEFIN("branch_binary_variable");
+//         return FC_CONTINUE;
+//     }
+//     if (branch_variable()) {
+//         ++m_stats.m_branch_variable;
+//         TRACEFIN("branch_variable");
+//         return FC_CONTINUE;
+//     }
+//     if (check_length_coherence()) {
+//         ++m_stats.m_check_length_coherence;
+//         TRACEFIN("check_length_coherence");
+//         return FC_CONTINUE;
+//     }
+//     if (!check_extensionality()) {
+//         ++m_stats.m_extensionality;
+//         TRACEFIN("extensionality");
+//         return FC_CONTINUE;
+//     }
+//     if (branch_nqs()) {
+//         ++m_stats.m_branch_nqs;
+//         TRACEFIN("branch_ne");
+//         return FC_CONTINUE;
+//     }
 
     if (m_unhandled_expr) {
         TRACEFIN("give_up");
@@ -711,11 +711,23 @@ bool theory_seq::is_solved() {
         IF_VERBOSE(10, verbose_stream() << "(seq.giveup " << m_eqs[0].ls << " = " << m_eqs[0].rs << " is unsolved)\n";);
         return false;
     }
+    if (!m_nqs.empty()) {
+        TRACE("seq", tout << "(seq.giveup " << m_nqs[0].l() << " != " << m_nqs[0].r() << " is unsolved)\n";);
+        IF_VERBOSE(10, verbose_stream() << "(seq.giveup " << m_nqs[0].l() << " = " << m_nqs[0].r() << " is unsolved)\n";);
+        return false;
+    }
+
     if (!m_ncs.empty()) {
         TRACE("seq", display_nc(tout << "(seq.giveup ", m_ncs[0]); tout << " is unsolved)\n";);
         IF_VERBOSE(10, display_nc(verbose_stream() << "(seq.giveup ", m_ncs[0]); verbose_stream() << " is unsolved)\n";);
         return false;
     }
+    if (!m_rcs.empty()) {
+        TRACE("seq", tout << "(seq.giveup "<< m_rcs[0].term() <<" in "<<m_rcs[1].re() << " is unsolved)\n";);
+        IF_VERBOSE(10, display_nc(verbose_stream() << "(seq.giveup ", m_ncs[0]); verbose_stream() << " is unsolved)\n";);
+        return false;
+    }
+
 
 #if 0
     // debug code
