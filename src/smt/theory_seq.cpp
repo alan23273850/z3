@@ -382,11 +382,11 @@ final_check_status theory_seq::final_check_eh() {
 //         TRACEFIN("zero_length");
 //         return FC_CONTINUE;
 //     }
-//     if (get_fparams().m_split_w_len && len_based_split()) {
-//         ++m_stats.m_branch_variable;
-//         TRACEFIN("split_based_on_length");
-//         return FC_CONTINUE;
-//     }
+     if (get_fparams().m_split_w_len && len_based_split()) {
+         ++m_stats.m_branch_variable;
+         TRACEFIN("split_based_on_length");
+         return FC_CONTINUE;
+     }
 //     if (fixed_length()) {
 //         ++m_stats.m_fixed_length;
 //         TRACEFIN("fixed_length");
@@ -412,6 +412,17 @@ final_check_status theory_seq::final_check_eh() {
 //         TRACEFIN("branch_binary_variable");
 //         return FC_CONTINUE;
 //     }
+
+
+    if (branch_variable_mb()) {
+        TRACE("seq", tout << "branch_variable_mb\n";);
+        return FC_CONTINUE;
+    }
+//    if (branch_variable_eq()) {
+//        TRACE("seq", tout << "branch_variable_eq\n";);
+//        return FC_CONTINUE;
+//    }
+
 //     if (branch_variable()) {
 //         ++m_stats.m_branch_variable;
 //         TRACEFIN("branch_variable");
@@ -432,6 +443,22 @@ final_check_status theory_seq::final_check_eh() {
 //         TRACEFIN("branch_ne");
 //         return FC_CONTINUE;
 //     }
+
+//    for(auto eq:m_eqs){
+//        FINALCHECK(eq.ls << " = " << eq.rs << "\n";);
+//    }
+//    for(auto nq:m_nqs){
+//        FINALCHECK(nq.l() << " != " << nq.r() << "\n";);
+//    }
+//
+//    for(auto nc:m_ncs) {
+//        FINALCHECK( "not " << mk_pp(nc.contains(), m) << "\n";);
+//    }
+//    for(auto rc:m_rcs) {
+//        FINALCHECK(m_rcs[0].term() <<" in "<<m_rcs[1].re() << "\n";);
+//
+//    }
+
 
     if (m_unhandled_expr) {
         TRACEFIN("give_up");
