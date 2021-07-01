@@ -269,13 +269,13 @@ bool theory_seq::branch_variable_mb() {
     unsigned sz = m_eqs.size();
     int start = ctx.get_random_value();
     for (unsigned i = 0; i < sz; ++i) {
-        unsigned k = (i + start) % sz;
+        unsigned k = (i ) % sz;
         depeq const& e = m_eqs[k];
         vector<rational> len1, len2;
-        if (!is_complex(e)) {
+        if (!is_complex(e)) {//one side does not have variable, both each side has only one variable
             continue;
         }
-        if (e.ls.empty() || e.rs.empty() || 
+        if (e.ls.empty() || e.rs.empty() ||
             (!is_var(e.ls[0]) && !is_var(e.rs[0]))) {
             continue;
         }
@@ -296,7 +296,7 @@ bool theory_seq::branch_variable_mb() {
         expr_ref l = mk_concat(e.ls);
         expr_ref r = mk_concat(e.rs);
         expr_ref lnl = mk_len(l), lnr = mk_len(r);
-        if (propagate_eq(e.dep(), lnl, lnr, false)) 
+        if (propagate_eq(e.dep(), lnl, lnr, false))
             change = true;
     }
     return change;
