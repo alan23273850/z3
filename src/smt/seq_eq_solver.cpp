@@ -169,18 +169,9 @@ bool theory_seq::len_based_split() {
    ls = x11 + x12                for len(x11) = len(y11)
    rs = y11 + y12
 
-   ls = x11     + Z + x12        for len(x11) = len(y11) + offset
-   rs = y11 + Z + y12
+   propagate ls = rs & len(x11) == len(y11) => x11  == y11
+   propagate ls = rs & len(x11) == len(y11) => x12 == y12
 
-   ls = x11 + Z + x12            for len(x11) = len(y11) - offset
-   rs = y11     + Z + y12
-
-   Use last case as sample:
-
-   propagate ls = rs & len(x12 + Z) == len(y11) => x11 + Z == y11
-   propagate ls = rs & len(x11 + Z) == len(y11) => x12 == Z + y12
-   propagate ls = rs & len(x12 + Z) == len(y11) => len(Z) = offset
-   
 */
 
 bool theory_seq::len_based_split(depeq const& e) {
@@ -203,18 +194,7 @@ bool theory_seq::len_based_split(depeq const& e) {
     expr_ref lenY11 = mk_len(y11);
     expr_ref Z(m);
     if (offset != 0) {
-        lenY11 = m_autil.mk_add(lenY11, m_autil.mk_int(offset));
-        if (offset > 0) {
-            Z = m_sk.mk_align(y12, x12, x11, y11);
-            y11 = mk_concat(y11, Z);
-            x12 = mk_concat(Z, x12);
-        }
-        else {
-            offset = -offset;
-            Z = m_sk.mk_align(x12, y12, y11, x11);
-            x11 = mk_concat(x11, Z);
-            y12 = mk_concat(Z, y12);
-        }
+        return false;
     }
 
     dependency* dep = e.dep();
@@ -225,10 +205,6 @@ bool theory_seq::len_based_split(depeq const& e) {
     }
     lits.push_back(lit1);
 
-    if (offset != 0) {
-        expr_ref lenZ = mk_len(Z);
-        propagate_eq(dep, lits, lenZ, m_autil.mk_int(offset), false);
-    }
     propagate_eq(dep, lits, y11, x11, true);
     propagate_eq(dep, lits, x12, y12, false);
 
