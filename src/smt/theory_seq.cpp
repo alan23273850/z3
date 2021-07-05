@@ -347,6 +347,35 @@ void theory_seq::block_curr_assignment() {
     FINALCHECK(__LINE__ << " leave " << __FUNCTION__ << std::endl;)
 }
 
+bool theory_seq::check_parikh_image() {
+    bool change = false;
+    for (const auto &eq: m_eqs) // in m_eqs
+    if (!m_eq_ids_pki.contains(eq.id())) {
+        m_eq_ids_pki.push_back(eq.id());
+        for (const auto &eqh: {eq.ls, eq.rs}) // of a word equation
+        for (const auto &ch: eqh) // in LHS or RHS
+        if (m_util.str.is_unit(ch)) { // for each (target) character, do:
+        // for (const auto &eq: m_eqs) // in m_eqs
+            expr_ref_vector ls(m), rs(m);
+            for (const auto &p: {std::make_pair(&ls, &(eq.ls)), std::make_pair(&rs, &(eq.rs))}) // in LHS or RHS of a word equation
+                for (const auto &var: *(p.second)) { // for each variable or character
+                    if (is_var(var)) // if it is a variable, add the corresponding variable V-ch into the equation.
+                        p.first->push_back(m_util.mk_skolem(symbol(""), 2, std::initializer_list<expr*>({var, ch}).begin(), m.mk_sort(m_autil.get_family_id(), INT_SORT)));
+                    else if (m_util.str.is_unit(var) && var==ch) // if it is a "target" character, add 1 into the equation.
+                        p.first->push_back(m_autil.mk_int(1));
+                    else // not considered this case yet.
+                        SASSERT(false);
+                }
+            // std::cout << "===" << ls << rs << "===" << std::endl;
+            expr_ref lsum(m_autil.mk_add(ls), m), rsum(m_autil.mk_add(rs), m);
+            // m_rewrite(lsum); m_rewrite(rsum); // rewrite is a must, but which rewriter?
+            propagate_eq(eq.dep(), lsum, rsum);
+            change = true;
+        }
+    }
+    return change;
+}
+
 final_check_status theory_seq::final_check_eh() {
     FINALCHECK("level: " << ctx.get_scope_level() << "\n";)
 
@@ -357,6 +386,11 @@ final_check_status theory_seq::final_check_eh() {
     m_new_propagation = false;
     TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
     TRACE("seq_verbose", ctx.display(tout););
+
+    if (check_parikh_image()) {
+        TRACE("seq", tout << "check_parikh_image\n";);
+        return FC_CONTINUE;
+    }
 
 //     if (simplify_and_solve_eqs()) {
 //         ++m_stats.m_solve_eqs;

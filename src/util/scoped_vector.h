@@ -35,6 +35,13 @@ public:
     // m_index.size() = max(m_sizes)
     // m_src[i] -> m_dst[i] // trail into m_index updates
     // m_src_lim last index to be updated.
+
+    bool contains(const T &obj) {
+        for (unsigned idx=0; idx<m_size; idx++)
+            if (obj == m_elems[m_index[idx]])
+                return true;
+        return false;
+    }
     
     void push_scope() {
         m_elems_start = m_elems.size();
