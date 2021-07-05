@@ -342,6 +342,7 @@ namespace smt {
         dependency_manager         m_dm;
         solution_map               m_rep;        // unification representative.
         scoped_vector<depeq>       m_eqs;        // set of current equations.
+        scoped_vector<unsigned>    m_eq_ids_pki; // set of current equations not processed by check_parikh_image
         scoped_vector<ne>          m_nqs;        // set of current disequalities.
         scoped_vector<nc>          m_ncs;        // set of non-contains constraints.
         scoped_vector<rc>          m_rcs;        // set of regular experssion constraints.
@@ -435,6 +436,7 @@ namespace smt {
         
         // final check 
         void block_curr_assignment();
+        bool check_parikh_image();       // propagate check_parikh_image equalities
         bool simplify_and_solve_eqs();   // solve unitary equalities
         bool reduce_length_eq();
         bool branch_unit_variable();     // branch on XYZ = abcdef
