@@ -1,15 +1,17 @@
 import subprocess
 
 def from_file_to_data_row(file):
+    # print(file)
     result_list = [file]; ans_key = {} # since the file suffix can be .smt2 or .smt25, we don't set the filter here.
     # Note: since neither str.replaceall nor str.replace_all is supported by trau, we leave it as an error (no replacement) when solved by cvc4-1.8 and z3-4.8.9.
     ########################################
     # Section 1: ~/z3-4.8.9 (whether latest function name or not is allowed) (whether unicode representation or not is allowed)
-    t = res = ''
+    t = res = msg = ''
     # p = subprocess.run(f"cat {file} | cat - <(echo ''; echo '(get-model)') |" + r"sed 's/(set-logic[^)]*)/(set-logic ALL)/g; s/(set-option[^)]*:strings-exp[^)]*)//g' |" \
     #     "time -p ~/z3-4.8.9 -in", shell=True, capture_output=True, executable='/bin/bash')
     p = subprocess.run(f"time -p timeout 10 z3 {file}", shell=True, capture_output=True, executable='/bin/bash')
-    t = p.stderr.splitlines()[-3].decode('utf-8'); assert t.startswith('real '); t = t.split(' ')[1]
+    t = p.stderr.splitlines()[-3].decode('utf-8'); t = t[t.rfind('real '):]; assert t.startswith('real '); t = t.split(' ')[1]
+    msg = ' '.join(map(lambda x: x.decode('utf-8'), p.stderr.splitlines()[:-3]))
     try:
         res = p.stdout.splitlines()[0].decode('utf-8')
         # if not ans_key and res == 'sat':
@@ -25,8 +27,8 @@ def from_file_to_data_row(file):
         #                 varname = ''
         #         else:
         #             if line == '(model': read_model = True
-    except: res = 'timeout' if float(t) >= 10 else 'error'
-    result_list += [t, res]
+    except: res = 'timeout' if float(t) >= 10 and not msg.endswith('(C)ontinue, (A)bort, (S)top, (T)hrow exception, Invoke (G)DB') else 'error'
+    result_list += [t, res, msg]
     ########################################
     # Section 2: ~/cvc4-1.8-x86_64-linux-opt (only latest function name is allowed) (only unicode representation is allowed)
     t = res = ''
