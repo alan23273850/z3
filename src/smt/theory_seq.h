@@ -342,7 +342,8 @@ namespace smt {
         dependency_manager         m_dm;
         solution_map               m_rep;        // unification representative.
         scoped_vector<depeq>       m_eqs;        // set of current equations.
-        scoped_vector<unsigned>    m_eq_ids_pki; // set of current equations not processed by check_parikh_image
+        scoped_vector<unsigned>    m_eqids_pkh;  // set of current equations not processed by check_parikh_image
+        scoped_vector<expr*>       m_chars_pkh;  // set of characters to be used by check_parikh_image
         scoped_vector<ne>          m_nqs;        // set of current disequalities.
         scoped_vector<nc>          m_ncs;        // set of non-contains constraints.
         scoped_vector<rc>          m_rcs;        // set of regular experssion constraints.
@@ -433,6 +434,8 @@ namespace smt {
         int find_fst_non_empty_idx(expr_ref_vector const& x);
         expr* find_fst_non_empty_var(expr_ref_vector const& x);
         bool has_len_offset(expr_ref_vector const& ls, expr_ref_vector const& rs, int & diff);
+
+        app* mk_int_var_ch(expr *var, expr *ch); // construct parikh image counter variable
         
         // final check 
         void block_curr_assignment();

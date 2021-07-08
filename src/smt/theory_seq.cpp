@@ -346,30 +346,71 @@ void theory_seq::block_curr_assignment() {
     FINALCHECK(__LINE__ << " leave " << __FUNCTION__ << std::endl;)
 }
 
+app* theory_seq::mk_int_var_ch(expr *var, expr *ch) {
+    return m_util.mk_skolem(symbol("parikh image counter"), 2,
+        std::initializer_list<expr*>({var, ch}).begin(),
+        m.mk_sort(m_autil.get_family_id(), INT_SORT));
+}
+
+// TODO: do all const char exprs carrying the same character have the same pointer or id?
+/**
+    \brief For all equations like XYacc = bbacYYZ, propagate:
+   -> V(X,a) + V(Y,a) + 1 + 0 + 0 = 0 + 0 + 1 + 0 + V(Y,a) + V(Y,a) + V(Z,a)
+   -> V(X,b) + V(Y,b) + 0 + 0 + 0 = 1 + 1 + 0 + 0 + V(Y,b) + V(Y,b) + V(Z,b)
+   -> V(X,c) + V(Y,c) + 0 + 1 + 1 = 0 + 0 + 0 + 1 + V(Y,c) + V(Y,c) + V(Z,c)
+   This mechanism is used for only obtaining the UNSAT result.
+*/
 bool theory_seq::check_parikh_image() {
     bool change = false;
-    for (const auto &eq: m_eqs) // in m_eqs
-    if (!m_eq_ids_pki.contains(eq.id())) {
-        m_eq_ids_pki.push_back(eq.id());
-        for (const auto &eqh: {eq.ls, eq.rs}) // of a word equation
-        for (const auto &ch: eqh) // in LHS or RHS
-        if (m_util.str.is_unit(ch)) { // for each (target) character, do:
-        // for (const auto &eq: m_eqs) // in m_eqs
-            expr_ref_vector ls(m), rs(m);
-            for (const auto &p: {std::make_pair(&ls, &(eq.ls)), std::make_pair(&rs, &(eq.rs))}) // in LHS or RHS of a word equation
-                for (const auto &var: *(p.second)) { // for each variable or character
-                    if (is_var(var)) // if it is a variable, add the corresponding variable V-ch into the equation.
-                        p.first->push_back(m_util.mk_skolem(symbol(""), 2, std::initializer_list<expr*>({var, ch}).begin(), m.mk_sort(m_autil.get_family_id(), INT_SORT)));
-                    else if (m_util.str.is_unit(var) && var==ch) // if it is a "target" character, add 1 into the equation.
-                        p.first->push_back(m_autil.mk_int(1));
-                    else // not considered this case yet.
-                        SASSERT(false);
+    for (const auto &eq: m_eqs) {
+        if (!m_eqids_pkh.contains(eq.id())) {
+            for (const auto &ohs: {eq.ls, eq.rs}) { // ohs: one hand side
+                for (const auto &atom: ohs) {
+                    expr *ch;
+                    if (m_util.str.is_unit(atom, ch) && m_util.is_const_char(ch) && !m_chars_pkh.contains(ch))
+                        m_chars_pkh.push_back(ch);
                 }
-            // std::cout << "===" << ls << rs << "===" << std::endl;
-            expr_ref lsum(m_autil.mk_add(ls), m), rsum(m_autil.mk_add(rs), m);
-            // m_rewrite(lsum); m_rewrite(rsum); // rewrite is a must, but which rewriter?
-            propagate_eq(eq.dep(), lsum, rsum);
-            change = true;
+            }
+        }
+    }
+    for (const auto &eq: m_eqs) {
+        if (!m_eqids_pkh.contains(eq.id())) {
+            m_eqids_pkh.push_back(eq.id());
+            for (const auto &ch: m_chars_pkh) {
+                expr_ref_vector countereq_ls(m), countereq_rs(m);
+                for (const auto &p: {std::make_pair(&countereq_ls, &(eq.ls)), std::make_pair(&countereq_rs, &(eq.rs))}) {
+                    expr_ref_vector &counter_ohs = *(p.first);
+                    const expr_ref_vector &eq_ohs = *(p.second);
+                    for (const auto &atom: eq_ohs) {
+                        expr *unit;
+                        if (is_var(atom))
+                            counter_ohs.push_back(mk_int_var_ch(atom, ch));
+                        else if (m_util.str.is_unit(atom, unit)) {
+                            if (m_util.is_const_char(unit)) {
+                                if (unit == ch)
+                                    counter_ohs.push_back(m_autil.mk_int(1));
+                            } else if (is_var(unit))
+                                counter_ohs.push_back(mk_int_var_ch(unit, ch));
+                            else if (m_util.str.is_string(unit)) {
+                                std::cerr << "[S]" << mk_pp(atom, m) << "\n";
+                                SASSERT(false);
+                            }
+                            else {
+                                std::cerr << "[V]" << mk_pp(unit, m) << "\n";
+                                counter_ohs.push_back(mk_int_var_ch(unit, ch));
+                            }
+                        }
+                        else {
+                            std::cerr << "[E]" << mk_pp(atom, m) << "\n";
+                            SASSERT(false);
+                        }
+                    }
+                }
+                expr_ref lsum(m_autil.mk_add(countereq_ls), m), rsum(m_autil.mk_add(countereq_rs), m);
+                // m_rewrite(lsum); m_rewrite(rsum); // maybe rewrite is a must, but which rewriter?
+                propagate_eq(eq.dep(), lsum, rsum);
+                change = true;
+            }
         }
     }
     return change;
