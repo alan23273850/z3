@@ -201,3 +201,8 @@ expr_ref skolem::mk_step(expr* s, expr* idx, expr* re, unsigned i, unsigned j, e
     return expr_ref(seq.mk_skolem(m_aut_step, args.size(), args.data(), m.mk_bool_sort()), m);
 }
 
+expr_ref skolem::mk_int_var_ch(expr *var, expr *ch) {
+    return expr_ref(seq.mk_skolem(symbol("parikh image counter"), 2,
+        std::initializer_list<expr*>({var, ch}).begin(),
+        m.mk_sort(a.get_family_id(), INT_SORT)), m);
+}
