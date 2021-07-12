@@ -204,7 +204,8 @@ expr_ref skolem::mk_step(expr* s, expr* idx, expr* re, unsigned i, unsigned j, e
 expr_ref skolem::mk_digit2bv(expr* ch, sort* bv_sort) {
     return mk(symbol("seq.digit2bv"), ch, nullptr, nullptr, nullptr, bv_sort);
 }
-expr_ref skolem::mk_int_var_ch(expr *var, expr *ch) {
+
+expr_ref skolem::mk_int_var_char(expr *var, expr *ch) {
     return expr_ref(seq.mk_skolem(symbol("parikh image counter"), 2,
         std::initializer_list<expr*>({var, ch}).begin(),
         m.mk_sort(a.get_family_id(), INT_SORT)), m);

@@ -347,7 +347,7 @@ void theory_seq::block_curr_assignment() {
     FINALCHECK(__LINE__ << " leave " << __FUNCTION__ << std::endl;)
 }
 
-bool theory_seq::expr_is_const_char(expr *const e, expr* &ch) {
+bool theory_seq::atom_is_const_char(expr *const e, expr* &ch) {
     if (m_util.str.is_unit(e, ch)) {
         if (m_util.is_const_char(ch)) {
             return true;
@@ -380,10 +380,10 @@ bool theory_seq::check_parikh_image() {
     bool change = false;
     for (const auto &eq: m_eqs) {
         if (!m_eqids_pkh.contains(eq.id())) {
-            for (const auto &ohs: {eq.ls, eq.rs}) { // ohs: one hand side
-                for (const auto &atom: ohs) {
+            for (const auto &term: {eq.ls, eq.rs}) {
+                for (const auto &atom: term) {
                     expr *ch;
-                    if (m_util.str.is_unit(atom, ch) && m_util.is_const_char(ch) && !m_chars_pkh.contains(ch)) {
+                    if (atom_is_const_char(atom, ch) && !m_chars_pkh.contains(ch)){
                         m_chars_pkh.push_back(ch);
                     }
                 }
@@ -393,21 +393,25 @@ bool theory_seq::check_parikh_image() {
     for (const auto &eq: m_eqs) {
         if (!m_eqids_pkh.contains(eq.id())) {
             m_eqids_pkh.push_back(eq.id());
-            for (const auto &ch: m_chars_pkh) {
-                expr_ref_vector countereq_ls(m), countereq_rs(m);
-                for (const auto &p: {std::make_pair(&countereq_ls, &(eq.ls)), std::make_pair(&countereq_rs, &(eq.rs))}) {
-                    expr_ref_vector &counter_ohs = *(p.first);
-                    const expr_ref_vector &eq_ohs = *(p.second);
-                    for (const auto &atom: eq_ohs) {
-                        expr *chatom;
-                        if (expr_is_const_char(atom, chatom)) {
-                            counter_ohs.push_back(m_autil.mk_int(chatom == ch));
-                        } else {
-                            counter_ohs.push_back(m_sk.mk_int_var_ch(atom, ch));
+            for (const auto &index_char: m_chars_pkh) {
+                expr_ref_vector index_char_occurrence_lhs(m), index_char_occurrence_rhs(m);
+                for (const auto &p: {std::make_pair(&index_char_occurrence_lhs, &(eq.ls)), std::make_pair(&index_char_occurrence_rhs, &(eq.rs))}) {
+
+                    expr_ref_vector &index_char_occurrence = *(p.first);
+                    const expr_ref_vector &word_term = *(p.second);
+
+                    for (const auto &atom: word_term) {
+                        expr *atom_char;
+                        if (atom_is_const_char(atom, atom_char)) {
+                            if(atom_char == index_char){
+                                index_char_occurrence.push_back(m_autil.mk_int(1));
+                            }
+                        } else {//'atom' is a string variable
+                            index_char_occurrence.push_back(m_sk.mk_int_var_char(atom, index_char));
                         }
                     }
                 }
-                expr_ref lsum(m_autil.mk_add(countereq_ls), m), rsum(m_autil.mk_add(countereq_rs), m);
+                expr_ref lsum(m_autil.mk_add(index_char_occurrence_lhs), m), rsum(m_autil.mk_add(index_char_occurrence_rhs), m);
                 // m_rewrite(lsum); m_rewrite(rsum); // maybe rewrite is a must, but which rewriter?
                 propagate_eq(eq.dep(), lsum, rsum);
                 change = true;
