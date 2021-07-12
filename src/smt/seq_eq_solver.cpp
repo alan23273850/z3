@@ -243,7 +243,7 @@ bool theory_seq::branch_variable() {
 bool theory_seq::branch_variable_mb() {
     bool change = false;
     unsigned sz = m_eqs.size();
-    int start = ctx.get_random_value();
+    // int start = ctx.get_random_value();
     for (unsigned i = 0; i < sz; ++i) {
         unsigned k = (i ) % sz;
         depeq const& e = m_eqs[k];

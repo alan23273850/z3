@@ -99,7 +99,7 @@
 (assert (= "J" (str.at var50 11)))
 (assert (= "f" (str.at var33 7)))
 (assert (= "#" (str.at var60 55)))
-(assert (= "\\" (str.at var31 39)))
+(assert (= "\u{5c}" (str.at var31 39)))
 (assert (= "d" (str.at var9 98)))
 (assert (= "(" (str.at var49 41)))
 (assert (= ":" (str.at var10 99)))

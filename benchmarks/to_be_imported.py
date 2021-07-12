@@ -13,7 +13,15 @@ def from_file_to_data_row(file):
     t = p.stderr.splitlines()[-3].decode('utf-8'); t = t[t.rfind('real '):]; assert t.startswith('real '); t = t.split(' ')[1]
     msg = ' '.join(map(lambda x: x.decode('utf-8'), p.stderr.splitlines()[:-3]))
     try:
-        res = p.stdout.splitlines()[0].decode('utf-8')
+        stdoutList = list(map(lambda x: x.decode('utf-8'), p.stdout.splitlines()))
+        if 'sat' in stdoutList: res = 'sat'
+        if 'unsat' in stdoutList:
+            if res: raise Exception()
+            res = 'unsat'
+        if 'unknown' in stdoutList:
+            if res: raise Exception()
+            res = 'unknown'
+        if float(t) >= 10: res = 'timeout'
         # if not ans_key and res == 'sat':
         #     varname = ''; read_model = False
         #     for line in p.stdout.splitlines():

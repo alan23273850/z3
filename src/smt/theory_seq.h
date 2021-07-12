@@ -438,6 +438,8 @@ namespace smt {
         expr* find_fst_non_empty_var(expr_ref_vector const& x);
         bool has_len_offset(expr_ref_vector const& ls, expr_ref_vector const& rs, int & diff);
 
+        bool expr_is_const_char(expr *const e, expr* &ch);
+
         // final check 
         void block_curr_assignment();
         bool check_parikh_image();       // propagate check_parikh_image equalities

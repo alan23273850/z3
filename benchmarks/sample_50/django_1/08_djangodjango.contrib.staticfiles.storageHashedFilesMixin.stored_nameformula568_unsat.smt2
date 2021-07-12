@@ -1,7 +1,7 @@
 (set-logic ALL)
 (declare-const name String)
 (assert (not (< (str.len name) 0)))
-(assert (= (+ 0 (str.indexof name "\\" 0)) (- 1)))
+(assert (= (+ 0 (str.indexof name "\u{5c}" 0)) (- 1)))
 (assert (not (str.contains name "%")))
 (assert (not (< (str.len name) 0)))
 (assert (> (+ 0 (str.indexof name ":" 0)) 0))
