@@ -346,6 +346,27 @@ void theory_seq::block_curr_assignment() {
     FINALCHECK(__LINE__ << " leave " << __FUNCTION__ << std::endl;)
 }
 
+bool theory_seq::expr_is_const_char(expr *const e, expr* &ch) {
+    if (m_util.str.is_unit(e, ch)) {
+        if (m_util.is_const_char(ch)) {
+            return true;
+        }
+        else if (m_util.str.is_string(ch)) {
+            std::cerr << "[US]" << mk_pp(ch, m) << "\n";
+            SASSERT(false);
+        } else {
+            return false;
+        }
+    } else if (m_util.is_const_char(e)) {
+        std::cerr << "[C]" << mk_pp(e, m) << "\n";
+        SASSERT(false);
+    } else if (m_util.str.is_string(e)) {
+        std::cerr << "[S]" << mk_pp(e, m) << "\n";
+        SASSERT(false);
+    }
+    return false;
+}
+
 // TODO: do all const char exprs carrying the same character have the same pointer or id?
 /**
     \brief For all equations like XYacc = bbacYYZ, propagate:
@@ -377,30 +398,11 @@ bool theory_seq::check_parikh_image() {
                     expr_ref_vector &counter_ohs = *(p.first);
                     const expr_ref_vector &eq_ohs = *(p.second);
                     for (const auto &atom: eq_ohs) {
-                        expr *unit;
-                        if (is_var(atom)) {
+                        expr *chatom;
+                        if (expr_is_const_char(atom, chatom)) {
+                            counter_ohs.push_back(m_autil.mk_int(chatom == ch));
+                        } else {
                             counter_ohs.push_back(m_sk.mk_int_var_ch(atom, ch));
-                        }
-                        else if (m_util.str.is_unit(atom, unit)) {
-                            if (m_util.is_const_char(unit)) {
-                                if (unit == ch) {
-                                    counter_ohs.push_back(m_autil.mk_int(1));
-                                }
-                            } else if (is_var(unit)) {
-                                counter_ohs.push_back(m_sk.mk_int_var_ch(unit, ch));
-                            }
-                            else if (m_util.str.is_string(unit)) {
-                                std::cerr << "[S]" << mk_pp(atom, m) << "\n";
-                                SASSERT(false);
-                            }
-                            else {
-                                std::cerr << "[V]" << mk_pp(unit, m) << "\n";
-                                counter_ohs.push_back(m_sk.mk_int_var_ch(unit, ch));
-                            }
-                        }
-                        else {
-                            std::cerr << "[E]" << mk_pp(atom, m) << "\n";
-                            SASSERT(false);
                         }
                     }
                 }

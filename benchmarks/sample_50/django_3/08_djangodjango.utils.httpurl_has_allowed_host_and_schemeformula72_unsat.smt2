@@ -27,7 +27,7 @@
 (assert (not require_https))
 (assert (not (not (= (str.substr url 2 (- (str.len url) 2)) ""))))
 (assert (not (< (str.len url) 0)))
-(assert (= (+ 0 (str.indexof url "\\" 0)) (- 1)))
+(assert (= (+ 0 (str.indexof url "\u{5c}" 0)) (- 1)))
 (assert (not (< (str.len (str.++ "" url)) 0)))
 (assert (not (str.prefixof "///" (str.++ "" url))))
 (assert (not (< (str.len (str.++ "" url)) 0)))

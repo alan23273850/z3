@@ -4,7 +4,7 @@
 (assert (not (< (str.len script) 0)))
 (assert (not (str.prefixof "sudo " script)))
 (assert (not (< (str.len script) 0)))
-(assert (not (= (+ 0 (str.indexof script "\\ " 0)) (- 1))))
+(assert (not (= (+ 0 (str.indexof script "\u{5c} " 0)) (- 1))))
 (assert (not (= script "vim run_project.py")))
 (assert (not (= script "cd project_statistics/")))
 (assert (not (= script "ls")))

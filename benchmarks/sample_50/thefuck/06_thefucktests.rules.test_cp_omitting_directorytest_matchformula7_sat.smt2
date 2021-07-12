@@ -5,7 +5,7 @@
 (assert (str.prefixof "sudo " script))
 (assert (not (< (str.len script) 0)))
 (assert (not (< (str.len (str.substr script 5 (- (str.len script) 5))) 0)))
-(assert (not (= (+ 0 (str.indexof (str.substr script 5 (- (str.len script) 5)) "\\ " 0)) (- 1))))
+(assert (not (= (+ 0 (str.indexof (str.substr script 5 (- (str.len script) 5)) "\u{5c} " 0)) (- 1))))
 (check-sat)
 (get-value (script))
 (get-value (output))

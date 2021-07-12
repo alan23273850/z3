@@ -110,7 +110,7 @@
 (assert (= "g" (str.at var31 29)))
 (assert (= "%" (str.at var6 89)))
 (assert (= "Y" (str.at var49 20)))
-(assert (= "\\" (str.at var50 45)))
+(assert (= "\u{5c}" (str.at var50 45)))
 (assert (= "R" (str.at var8 20)))
 (assert (= "u" (str.at var44 94)))
 (check-sat)

@@ -73,7 +73,7 @@
 (assert (< 68 (str.len new_cmd)))
 (assert (not (< 69 (str.len new_cmd))))
 (assert (not (< (str.len script) 0)))
-(assert (not (= (+ 0 (str.indexof script "\\ " 0)) (- 1))))
+(assert (not (= (+ 0 (str.indexof script "\u{5c} " 0)) (- 1))))
 (check-sat)
 (get-value (output))
 (get-value (script))
