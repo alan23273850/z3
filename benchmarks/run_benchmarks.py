@@ -15,4 +15,4 @@ with open(f"statistics/{sys.argv[1]}_small.csv", 'w', buffering=1) as f:
                 print(','.join(result_list))
                 print(','.join(result_list), file=f)
 
-os.system(f'python3 summary.py {sys.argv[1]}_small.csv')
+os.system(f'python3 summary.py statistics/{sys.argv[2]}_{sys.argv[1]}.csv')
