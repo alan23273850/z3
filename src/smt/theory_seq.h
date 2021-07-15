@@ -437,8 +437,32 @@ namespace smt {
 
         bool atom_is_const_char(expr *const e, expr* &ch);
 
+        // parallel_finite_automata
+        enum PFA_direction {
+            LEFT_LOOP_RIGHT_LOOP,
+            LEFT_NEXT_RIGHT_LOOP,
+            LEFT_LOOP_RIGHT_NEXT,
+            LEFT_NEXT_RIGHT_NEXT
+        };
+        struct state {
+            expr *self_loop_label;
+            expr *next_edge_label;
+        };
+        struct state *FAleft, *FAright;
+        int FASleft, FASright;
+        int encode_sync_state_id(int i, int j);
+        bool is_a_valid_sync_edge(int i, int j, int dir);
+        void construct_FA_from_word_term(const expr_ref_vector &term, struct state *FA, int &FAsize);
+        void enforce_char_coincide_for_enabled_sync_edges_of_one_state(unsigned eqid, unsigned i, unsigned j);
+        expr* no_more_than_one_incoming_edges_can_be_selected_in_one_state(unsigned eqid, unsigned i, unsigned j);
+        expr* no_more_than_one_outgoing_edges_can_be_selected_in_one_state(unsigned eqid, unsigned i, unsigned j);
+        void appearance_of_self_edges_or_outgoing_edges_implies_appearance_of_incoming_edges(unsigned eqid, unsigned i, unsigned j, expr *sum_in, expr *sum_out);
+        void sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(unsigned eqid);
+        /***************************************************************************************************/
+
         // final check 
         void block_curr_assignment();
+        void parallel_finite_automata();
         bool check_parikh_image();       // propagate check_parikh_image equalities
         bool simplify_and_solve_eqs();   // solve unitary equalities
         bool reduce_length_eq();
