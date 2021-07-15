@@ -100,7 +100,10 @@ namespace seq {
         expr_ref mk_max_unfolding_depth(unsigned d);
         expr_ref mk_length_limit(expr* e, unsigned d);
 
-        expr_ref mk_int_var_char(expr *var, expr *ch); // construct parikh image counter variable
+        expr_ref mk_parikh_image_counter(expr *var, expr *ch);
+        expr_ref mk_FA_self_loop_char(expr *var, unsigned i);
+        expr_ref mk_FA_self_loop_counter(expr *e);
+        expr_ref mk_PFA_edge_counter(unsigned eqid, unsigned state, unsigned dir);
         
         bool is_skolem(symbol const& s, expr const* e) const;
         bool is_skolem(expr const* e) const { return seq.is_skolem(e); }
