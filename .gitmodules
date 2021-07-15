@@ -1,0 +1,3 @@
+[submodule "benchmarks/trauc"]
+	path = benchmarks/trauc
+	url = https://github.com/plfm-iis/trauc_benchmarks.git

@@ -85,4 +85,5 @@ CMakeSettings.json
 # Editor temp files
 *.swp
 # Statistics
+benchmarks/z3
 #benchmarks/statistics*
