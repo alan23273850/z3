@@ -103,7 +103,8 @@ namespace seq {
         expr_ref mk_parikh_image_counter(expr *var, expr *ch);
         expr_ref mk_FA_self_loop_char(expr *var, unsigned i);
         expr_ref mk_FA_self_loop_counter(expr *e);
-        expr_ref mk_PFA_edge_counter(unsigned eqid, unsigned state, unsigned dir);
+        expr_ref mk_PFA_loop_counter(unsigned eqid, unsigned i, unsigned j);
+        expr_ref mk_PFA_edge_selection(unsigned eqid, const std::pair<int, int> &state1, const std::pair<int, int> &state2);
         
         bool is_skolem(symbol const& s, expr const* e) const;
         bool is_skolem(expr const* e) const { return seq.is_skolem(e); }
