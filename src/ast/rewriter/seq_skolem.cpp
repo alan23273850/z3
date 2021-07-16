@@ -218,8 +218,14 @@ expr_ref skolem::mk_FA_self_loop_counter(expr *e) {
         m.mk_sort(a.get_family_id(), INT_SORT)), m);
 }
 
-expr_ref skolem::mk_PFA_edge_counter(unsigned eqid, unsigned state, unsigned dir) {
-    return expr_ref(seq.mk_skolem(symbol("PFA edge counter"), 3,
-        std::initializer_list<expr*>({a.mk_int(eqid), a.mk_int(state), a.mk_int(dir)}).begin(),
+expr_ref skolem::mk_PFA_loop_counter(unsigned eqid, unsigned i, unsigned j) {
+    return expr_ref(seq.mk_skolem(symbol("PFA loop counter"), 3,
+        std::initializer_list<expr*>({a.mk_int(eqid), a.mk_int(i), a.mk_int(j)}).begin(),
         m.mk_sort(a.get_family_id(), INT_SORT)), m);
+}
+
+expr_ref skolem::mk_PFA_edge_selection(unsigned eqid, const std::pair<int, int> &state1, const std::pair<int, int> &state2) {
+    return expr_ref(seq.mk_skolem(symbol("PFA edge selection"), 5,
+        std::initializer_list<expr*>({a.mk_int(eqid), a.mk_int(state1.first), a.mk_int(state1.second), a.mk_int(state2.first), a.mk_int(state2.second)}).begin(),
+        m.mk_sort(a.get_family_id(), BOOL_SORT)), m);
 }
