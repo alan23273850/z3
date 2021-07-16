@@ -369,11 +369,11 @@ bool theory_seq::atom_is_const_char(expr *const e, expr* &ch) {
 }
 
 int theory_seq::encode_sync_state_id(int i, int j) {
-    return i * FASright + j;
+    return i * FAright_size + j;
 }
 
 bool theory_seq::is_a_valid_sync_edge(int i, int j, int dir) {
-    if (i<0 || i>=FASleft || j<0 || j>=FASright) return false;
+    if (i<0 || i>=FAleft_size || j<0 || j>=FAright_size) return false;
     expr *a = dir==LEFT_LOOP_RIGHT_LOOP || dir==LEFT_LOOP_RIGHT_NEXT ? FAleft[i].self_loop_label : FAleft[i].next_edge_label;
     expr *b = dir==LEFT_LOOP_RIGHT_LOOP || dir==LEFT_NEXT_RIGHT_LOOP ? FAright[i].self_loop_label : FAright[i].next_edge_label;
     expr *ch1, *ch2;
@@ -388,29 +388,25 @@ bool theory_seq::is_a_valid_sync_edge(int i, int j, int dir) {
     return (a==nullptr) != (b==nullptr);
 }
 
-void theory_seq::construct_FA_from_word_term(const expr_ref_vector &term, struct state *FA, int &FAsize) {
-    FA = new struct state[100]; FAsize = 0;
-    FA[FAsize].self_loop_label = nullptr;
-    FA[FAsize].next_edge_label = nullptr;
+void theory_seq::from_word_term_to_FA(const expr_ref_vector &term, struct state *FA, int &size) {
+    FA = new struct state[2 * term.size()]; // TODO: needs to be modified to p * term.size().
+    size = 0;
     for (const auto &atom: term) {
         expr *ch;
         if (atom_is_const_char(atom, ch)) {
-            FA[FAsize].next_edge_label = ch; // maybe atom is also ok?
-            FAsize++;
-            FA[FAsize].self_loop_label = nullptr;
-            FA[FAsize].next_edge_label = nullptr;
+            FA[size].character = ch; // TODO: maybe "atom" is also ok? Then "ch" is not necessary.
+            FA[size].counter = m_autil.mk_int(1);
+            size++;
         } else {
-            if (FA[FAsize].self_loop_label != nullptr)
-                FAsize++;
-            FA[FAsize].self_loop_label = m_sk.mk_FA_self_loop_char(atom, 0);
-            FAsize++;
-            FA[FAsize].self_loop_label = m_sk.mk_FA_self_loop_char(atom, 1);
-            FA[FAsize].next_edge_label = nullptr;
+            for (int i=0; i<2; i++) { // TODO: 2 -> p
+                FA[size].character = m_sk.mk_FA_self_loop_char(atom, i);
+                FA[size].counter = m_sk.mk_FA_self_loop_counter(FA[size].character);
+                size++;
+            }
             // add_axiom(mk_eq(atom, mk_concat(mk_mul(m_sk.mk_FA_self_loop_char(atom, 0), m_sk.mk_FA_self_loop_counter(m_sk.mk_FA_self_loop_char(atom, 0))),
             //                                 mk_mul(m_sk.mk_FA_self_loop_char(atom, 1), m_sk.mk_FA_self_loop_counter(m_sk.mk_FA_self_loop_char(atom, 1)))), false));
         }
     }
-    FAsize++;
 }
 
 void theory_seq::enforce_char_coincide_for_enabled_sync_edges_of_one_state(unsigned eqid, unsigned i, unsigned j) {
@@ -474,10 +470,10 @@ void theory_seq::appearance_of_self_edges_or_outgoing_edges_implies_appearance_o
 }
 
 void theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(unsigned eqid) {
-    for (int i=0; i<FASleft; i++) {
+    for (int i=0; i<FAleft_size; i++) {
         if (FAleft[i].self_loop_label != nullptr) {
             expr_ref_vector loops(m);
-            for (int j=0; j<FASright; j++) {
+            for (int j=0; j<FAright_size; j++) {
                 if (is_a_valid_sync_edge(i, j, LEFT_LOOP_RIGHT_LOOP))
                     loops.push_back(m_sk.mk_PFA_edge_counter(eqid, encode_sync_state_id(i, j), LEFT_LOOP_RIGHT_LOOP));
                 else if (is_a_valid_sync_edge(i, j, LEFT_LOOP_RIGHT_NEXT) && FAright[j].next_edge_label!=nullptr)
@@ -487,10 +483,10 @@ void theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_t
             add_axiom(mk_eq(sum_loop, m_sk.mk_FA_self_loop_counter(FAleft[i].self_loop_label), false));
         }
     }
-    for (int j=0; j<FASright; j++) {
+    for (int j=0; j<FAright_size; j++) {
         if (FAright[j].self_loop_label != nullptr) {
             expr_ref_vector loops(m);
-            for (int i=0; i<FASleft; i++) {
+            for (int i=0; i<FAleft_size; i++) {
                 if (is_a_valid_sync_edge(i, j, LEFT_LOOP_RIGHT_LOOP))
                     loops.push_back(m_sk.mk_PFA_edge_counter(eqid, encode_sync_state_id(i, j), LEFT_LOOP_RIGHT_LOOP));
                 else if (is_a_valid_sync_edge(i, j, LEFT_NEXT_RIGHT_LOOP) && FAleft[i].next_edge_label!=nullptr)
@@ -505,11 +501,11 @@ void theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_t
 void theory_seq::parallel_finite_automata() {
     for (const auto &eq: m_eqs) {
         display_equation(std::cout, eq);
-        construct_FA_from_word_term(eq.ls, FAleft, FASleft);
-        construct_FA_from_word_term(eq.rs, FAright, FASright);
+        from_word_term_to_FA(eq.ls, FAleft, FAleft_size);
+        from_word_term_to_FA(eq.rs, FAright, FAright_size);
 
-        for (int i=0; i<FASleft; i++) {
-            for (int j=0; j<FASright; j++) {
+        for (int i=0; i<FAleft_size; i++) {
+            for (int j=0; j<FAright_size; j++) {
                 // 1st: for each non-epsilon valid sync edge, the two characters on that edge must be the same.
                 enforce_char_coincide_for_enabled_sync_edges_of_one_state(eq.id(), i, j);
 
@@ -523,7 +519,7 @@ void theory_seq::parallel_finite_automata() {
                 appearance_of_self_edges_or_outgoing_edges_implies_appearance_of_incoming_edges(eq.id(), i, j, sum_in, sum_out);
 
                 // 5th: for final state, summation of values of in-coming edges should be exactly 1.
-                if (i+1==FASleft && j+1==FASright && sum_in!=nullptr)
+                if (i+1==FAleft_size && j+1==FAright_size && sum_in!=nullptr)
                     add_axiom(mk_eq(sum_in, m_autil.mk_int(1), false));
             }
         }

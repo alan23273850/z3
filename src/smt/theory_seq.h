@@ -448,14 +448,14 @@ namespace smt {
             LEFT_NEXT_RIGHT_NEXT
         };
         struct state {
-            expr *self_loop_label;
-            expr *next_edge_label;
+            expr *character;
+            expr *counter;
         };
         struct state *FAleft, *FAright;
-        int FASleft, FASright;
+        int FAleft_size, FAright_size;
         int encode_sync_state_id(int i, int j);
         bool is_a_valid_sync_edge(int i, int j, int dir);
-        void construct_FA_from_word_term(const expr_ref_vector &term, struct state *FA, int &FAsize);
+        void from_word_term_to_FA(const expr_ref_vector &term, struct state *FA, int &size);
         void enforce_char_coincide_for_enabled_sync_edges_of_one_state(unsigned eqid, unsigned i, unsigned j);
         expr* no_more_than_one_incoming_edges_can_be_selected_in_one_state(unsigned eqid, unsigned i, unsigned j);
         expr* no_more_than_one_outgoing_edges_can_be_selected_in_one_state(unsigned eqid, unsigned i, unsigned j);
