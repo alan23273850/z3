@@ -450,12 +450,12 @@ namespace smt {
         };
         struct state *FAleft, *FAright;
         int FAleft_size, FAright_size;
-        int encode_sync_state_id(int i, int j);
         bool can_be_a_valid_sync_loop(int i, int j);
         void from_word_term_to_FA(const expr_ref_vector &term, struct state *FA, int &size);
         void only_at_most_one_incoming_edge_of_one_state_can_be_selected(unsigned eqid, unsigned i, unsigned j);
         void only_at_most_one_outgoing_edge_of_one_state_can_be_selected(unsigned eqid, unsigned i, unsigned j);
-        void appearance_of_self_edges_or_outgoing_edges_implies_appearance_of_incoming_edges(unsigned eqid, unsigned i, unsigned j, expr *sum_in, expr *sum_out);
+        void selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(unsigned eqid, unsigned i, unsigned j);
+        void at_least_one_incoming_edge_of_final_state_should_be_selected(unsigned eqid);
         void sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(unsigned eqid);
         /***************************************************************************************************/
 
