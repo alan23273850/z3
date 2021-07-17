@@ -444,15 +444,24 @@ namespace smt {
             LEFT_LOOP_RIGHT_NEXT,
             LEFT_NEXT_RIGHT_NEXT
         };
-        struct state {
-            expr *character;
-            expr *counter;
+        struct FA {
+            expr_ref_vector characters;
+            expr_ref_vector counters;
+            
+            FA(ast_manager& m): characters(m), counters(m) {}
+            unsigned size() {
+                SASSERT(characters.size() == counters.size());
+                return characters.size();
+            }
+            void clear() {
+                characters.reset();
+                counters.reset();
+            }
         };
-        struct state *FAleft, *FAright;
-        int FAleft_size, FAright_size;
-        bool can_be_a_valid_sync_loop(int i, int j);
-        void from_word_term_to_FA(const expr_ref_vector &term, struct state *FA, int &size);
-        void only_at_most_one_incoming_edge_of_one_state_can_be_selected(unsigned eqid, unsigned i, unsigned j);
+        struct FA FA_left, FA_right;
+        bool can_be_a_valid_sync_loop(unsigned i, unsigned j);
+        void from_word_term_to_FA(const expr_ref_vector &term, struct FA &FA);
+        void only_at_most_one_incoming_edge_of_one_state_can_be_selected(unsigned eqid, int i, int j);
         void only_at_most_one_outgoing_edge_of_one_state_can_be_selected(unsigned eqid, unsigned i, unsigned j);
         void selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(unsigned eqid, unsigned i, unsigned j);
         void at_least_one_incoming_edge_of_final_state_should_be_selected(unsigned eqid);

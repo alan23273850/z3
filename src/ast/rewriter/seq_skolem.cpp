@@ -213,8 +213,9 @@ expr_ref skolem::mk_FA_self_loop_char(expr *var, unsigned i) {
         m.mk_sort(a.get_family_id(), CHAR_SORT)), m);
 }
 
-expr_ref skolem::mk_FA_self_loop_counter(expr *e) {
-    return expr_ref(seq.mk_skolem(symbol("seq.fa_self_loop_counter"), 1, &e,
+expr_ref skolem::mk_FA_self_loop_counter(expr *var, unsigned i) {
+    return expr_ref(seq.mk_skolem(symbol("seq.fa_self_loop_counter"), 2,
+        std::initializer_list<expr*>({var, a.mk_int(i)}).begin(),
         m.mk_sort(a.get_family_id(), INT_SORT)), m);
 }
 
