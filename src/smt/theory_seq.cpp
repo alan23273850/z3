@@ -478,35 +478,40 @@ void theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_t
 
 void theory_seq::parallel_finite_automata() {
     for (const auto &eq: m_eqs) {
-        // display_equation(std::cout, eq);
+        display_equation(std::cout, eq);
 
         from_word_term_to_FA(eq.ls, FA_left);
         from_word_term_to_FA(eq.rs, FA_right);
+
+        std::cout<<"FA left = \n"<<FA_left;
+        std::cout<<"FA right = \n"<<FA_right;
 
         for (unsigned i=0; i<FA_left.size(); i++) {
             for (unsigned j=0; j<FA_right.size(); j++) {
                 // 1st: for each possibly valid sync loop, the two characters on that loop must be the same.
                 if (can_be_a_valid_sync_loop(i, j)) {
-                    m.mk_implies(m_autil.mk_gt(m_sk.mk_PFA_loop_counter(eq.id(), i, j), m_autil.mk_int(0)),
-                        m_autil.mk_eq(FA_left.characters[i].get(), FA_right.characters[j].get())); // TODO: needs to be implied from eq?
+                    expr_ref loop_i_j_gt_zero(m_autil.mk_gt(m_sk.mk_PFA_loop_counter(eq.id(), i, j), m_autil.mk_int(0)),m);
+                    expr_ref char_i_equals_char_j(m_autil.mk_eq(FA_left.characters[i].get(), FA_right.characters[j].get()),m);
+                    expr_ref char_equal_constraint(m.mk_implies(loop_i_j_gt_zero, char_i_equals_char_j),m);
+                    std::cout<<"Char constraint : \n"<<mk_pp(char_equal_constraint,m)<<"\n"; //TODO assert or propergate it
                 }
 
-                // 2nd: only at most one in-coming edge of one state can be selected.
-                only_at_most_one_incoming_edge_of_one_state_can_be_selected(eq.id(), i, j);
-
-                // 3rd: only at most one out-going edge of one state can be selected.
-                only_at_most_one_outgoing_edge_of_one_state_can_be_selected(eq.id(), i, j);
-
-                // 4th: selection of self edges or out-going edges implies selection of in-coming edges
-                selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(eq.id(), i, j);
+//                // 2nd: only at most one in-coming edge of one state can be selected.
+//                only_at_most_one_incoming_edge_of_one_state_can_be_selected(eq.id(), i, j);
+//
+//                // 3rd: only at most one out-going edge of one state can be selected.
+//                only_at_most_one_outgoing_edge_of_one_state_can_be_selected(eq.id(), i, j);
+//
+//                // 4th: selection of self edges or out-going edges implies selection of in-coming edges
+//                selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(eq.id(), i, j);
             }
         }
-
-        // 5th: at least one in-coming edge of final state should be selected.
-        at_least_one_incoming_edge_of_final_state_should_be_selected(eq.id());
-
-        // 6th: sum of edges for a single loop on the PFA must be mapped back to the original FA.
-        sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(eq.id());
+//
+//        // 5th: at least one in-coming edge of final state should be selected.
+//        at_least_one_incoming_edge_of_final_state_should_be_selected(eq.id());
+//
+//        // 6th: sum of edges for a single loop on the PFA must be mapped back to the original FA.
+//        sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(eq.id());
     }
 }
 
