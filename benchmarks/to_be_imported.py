@@ -22,6 +22,7 @@ def from_file_to_data_row(file):
             if res: raise Exception()
             res = 'unknown'
         if float(t) >= 10: res = 'timeout'
+        if msg.endswith('(C)ontinue, (A)bort, (S)top, (T)hrow exception, Invoke (G)DB'): res = 'error'
         # if not ans_key and res == 'sat':
         #     varname = ''; read_model = False
         #     for line in p.stdout.splitlines():
