@@ -447,8 +447,8 @@ namespace smt {
         struct FA {
             expr_ref_vector characters;
             expr_ref_vector counters;
-            
-            FA(ast_manager& m): characters(m), counters(m) {}
+            ast_manager& m;
+            FA(ast_manager& m): characters(m), counters(m),  m(m) {}
             unsigned size() {
                 SASSERT(characters.size() == counters.size());
                 return characters.size();
@@ -457,7 +457,19 @@ namespace smt {
                 characters.reset();
                 counters.reset();
             }
+            friend std::ostream& operator<<(std::ostream& out, const FA& fa)
+            {
+                SASSERT(fa.characters.size() == fa.counters.size());
+                for (int i=0;i< fa.characters.size();i++){
+                    out << "x["<<i<<"] = "<<mk_pp(fa.characters.get(i),fa.m)<<"\n";
+                    out << "c["<<i<<"] = "<<mk_pp(fa.counters.get(i),fa.m)<<"\n";
+                }
+                return out;
+            }
+
         };
+
+
         struct FA FA_left, FA_right;
         bool can_be_a_valid_sync_loop(unsigned i, unsigned j);
         void from_word_term_to_FA(const expr_ref_vector &term, struct FA &FA);
