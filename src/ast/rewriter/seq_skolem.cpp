@@ -228,5 +228,5 @@ expr_ref skolem::mk_PFA_loop_counter(unsigned eqid, unsigned i, unsigned j) {
 expr_ref skolem::mk_PFA_edge_selection(unsigned eqid, const std::pair<int, int> &state1, const std::pair<int, int> &state2) {
     return expr_ref(seq.mk_skolem(symbol("seq.pfa_edge_selection"), 5,
         std::initializer_list<expr*>({a.mk_int(eqid), a.mk_int(state1.first), a.mk_int(state1.second), a.mk_int(state2.first), a.mk_int(state2.second)}).begin(),
-        m.mk_sort(a.get_family_id(), BOOL_SORT)), m);
+        m.mk_bool_sort()), m);
 }

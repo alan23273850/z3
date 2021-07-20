@@ -404,8 +404,10 @@ void theory_seq::only_at_most_one_incoming_edge_of_one_state_can_be_selected(uns
     if (edges.size() >= 2) {
         for (unsigned i=0; i<edges.size(); i++)
             for (unsigned j=i+1; j<edges.size(); j++)
-                literals_can_not_be_both_true.push_back(m.mk_or(m.mk_not(edges[i].get()), m.mk_not(edges[j].get()))),
+                literals_can_not_be_both_true.push_back(m.mk_or(m.mk_not(edges[i].get()), m.mk_not(edges[j].get())));
         add_axiom(mk_literal(m.mk_and(literals_can_not_be_both_true))); // TODO: propagate or not?
+        FINALCHECK("only_at_most_one_incoming_edge_of_one_state_can_be_selected:\n";);
+        FINALCHECK(mk_pp(m.mk_and(literals_can_not_be_both_true), m) << "\n";);
     }
 }
 
@@ -483,8 +485,8 @@ void theory_seq::parallel_finite_automata() {
             from_word_term_to_FA(eq.ls, FA_left);
             from_word_term_to_FA(eq.rs, FA_right);
 
-            std::cout << "FA left = \n" << FA_left;
-            std::cout << "FA right = \n" << FA_right;
+            FINALCHECK("FA left = \n" << FA_left;);
+            FINALCHECK("FA right = \n" << FA_right;);
 
             for (unsigned i = 0; i < FA_left.size(); i++) {
                 for (unsigned j = 0; j < FA_right.size(); j++) {
@@ -497,11 +499,11 @@ void theory_seq::parallel_finite_automata() {
                         add_axiom(~mk_literal(loop_i_j_gt_zero), mk_literal(char_i_equals_char_j));
                     }
 
-//                // 2nd: only at most one in-coming edge of one state can be selected.
-//                only_at_most_one_incoming_edge_of_one_state_can_be_selected(eq.id(), i, j);
-//
-//                // 3rd: only at most one out-going edge of one state can be selected.
-//                only_at_most_one_outgoing_edge_of_one_state_can_be_selected(eq.id(), i, j);
+                    // 2nd: only at most one in-coming edge of one state can be selected.
+                    only_at_most_one_incoming_edge_of_one_state_can_be_selected(eq.id(), i, j);
+
+                    // 3rd: only at most one out-going edge of one state can be selected.
+                    only_at_most_one_outgoing_edge_of_one_state_can_be_selected(eq.id(), i, j);
 //
 //                // 4th: selection of self edges or out-going edges implies selection of in-coming edges
 //                selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(eq.id(), i, j);
