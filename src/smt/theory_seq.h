@@ -464,7 +464,7 @@ namespace smt {
             friend std::ostream& operator<<(std::ostream& out, const FA& fa)
             {
                 SASSERT(fa.characters.size() == fa.counters.size());
-                for (int i=0;i< fa.characters.size();i++){
+                for (unsigned i=0;i< fa.characters.size();i++){
                     out << "x["<<i<<"] = "<<mk_pp(fa.characters.get(i),fa.m)<<"\n";
                     out << "c["<<i<<"] = "<<mk_pp(fa.counters.get(i),fa.m)<<"\n";
                 }
