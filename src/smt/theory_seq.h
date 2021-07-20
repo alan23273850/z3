@@ -345,6 +345,7 @@ namespace smt {
         scoped_vector<depeq>       m_eqs;        // set of current equations.
         scoped_vector<unsigned>    m_eqids_pkh;  // set of current equations not processed by check_parikh_image
         scoped_vector<expr*>       m_chars_pkh;  // set of characters to be used by check_parikh_image
+        scoped_vector<unsigned>    m_flatterned_eqids;  // set of flatterned word equation ids
         scoped_vector<ne>          m_nqs;        // set of current disequalities.
         scoped_vector<nc>          m_ncs;        // set of non-contains constraints.
         scoped_vector<rc>          m_rcs;        // set of regular experssion constraints.
@@ -469,7 +470,6 @@ namespace smt {
                 }
                 return out;
             }
-
         };
 
 
