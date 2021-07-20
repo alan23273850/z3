@@ -396,6 +396,18 @@ void theory_seq::from_word_term_to_FA(const expr_ref_vector &term, struct FA &FA
     }
 }
 
+
+
+void theory_seq::if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(unsigned eqid, int i, int j) {
+    if (can_be_a_valid_sync_loop(i, j)) {
+        expr_ref loop_i_j_gt_zero(m_autil.mk_ge(m_sk.mk_PFA_loop_counter(eqid, i, j), m_autil.mk_int(1)), m);
+        expr_ref char_i_equals_char_j(m.mk_eq(FA_left.characters[i].get(), FA_right.characters[j].get()), m);
+        add_axiom(~mk_literal(loop_i_j_gt_zero), mk_literal(char_i_equals_char_j));
+        FINALCHECK("if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal: \n" << mk_pp(m_sk.mk_PFA_loop_counter(eqid, i, j), m) << "> 0 ==> ";);
+        FINALCHECK(mk_pp(FA_left.characters[i].get(), m) << " = " << mk_pp(FA_right.characters[j].get(), m)  << "\n";);
+    }
+}
+
 void theory_seq::only_at_most_one_incoming_edge_of_one_state_can_be_selected(unsigned eqid, int i, int j) {
     expr_ref_vector edges(m);
     expr_ref_vector literals_can_not_be_both_true(m);
@@ -423,6 +435,8 @@ void theory_seq::only_at_most_one_outgoing_edge_of_one_state_can_be_selected(uns
             for (unsigned j=i+1; j<edges.size(); j++)
                 literals_can_not_be_both_true.push_back(m.mk_or(m.mk_not(edges[i].get()), m.mk_not(edges[j].get())));
         add_axiom(mk_literal(m.mk_and(literals_can_not_be_both_true))); // TODO: propagate or not?
+        FINALCHECK("only_at_most_one_outgoing_edge_of_one_state_can_be_selected:\n";);
+        FINALCHECK(mk_pp(m.mk_and(literals_can_not_be_both_true), m) << "\n";);
     }
 }
 
@@ -476,7 +490,7 @@ void theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_t
     }
 }
 
-void theory_seq::parallel_finite_automata() {
+void theory_seq::flatten_string_constraints() {
     for (const auto &eq: m_eqs) {
         if(!m_flatterned_eqids.contains(eq.id())) {
 
@@ -492,13 +506,7 @@ void theory_seq::parallel_finite_automata() {
             for (unsigned i = 0; i < FA_left.size(); i++) {
                 for (unsigned j = 0; j < FA_right.size(); j++) {
                     // 1st: for each possibly valid sync loop, the two characters on that loop must be the same.
-                    if (can_be_a_valid_sync_loop(i, j)) {
-                        expr_ref loop_i_j_gt_zero(m_autil.mk_ge(m_sk.mk_PFA_loop_counter(eq.id(), i, j), m_autil.mk_int(1)), m);
-                        expr_ref char_i_equals_char_j(m.mk_eq(FA_left.characters[i].get(), FA_right.characters[j].get()), m);
-                        FINALCHECK("Char_equal constraint : \n" << mk_pp(m_sk.mk_PFA_loop_counter(eq.id(), i, j), m) << "> 0 ==> ";);
-                        FINALCHECK(mk_pp(FA_left.characters[i].get(), m) << " = " << mk_pp(FA_right.characters[j].get(), m)  << "\n";);
-                        add_axiom(~mk_literal(loop_i_j_gt_zero), mk_literal(char_i_equals_char_j));
-                    }
+                    if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(eq.id(), i, j);
 
                     // 2nd: only at most one in-coming edge of one state can be selected.
                     only_at_most_one_incoming_edge_of_one_state_can_be_selected(eq.id(), i, j);
@@ -586,7 +594,7 @@ final_check_status theory_seq::final_check_eh() {
     m_new_propagation = false;
     TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
     TRACE("seq_verbose", ctx.display(tout););
-    parallel_finite_automata();
+    flatten_string_constraints();
     return FC_DONE;
 
     if (check_parikh_image()) {
