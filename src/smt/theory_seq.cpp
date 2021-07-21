@@ -443,8 +443,7 @@ void theory_seq::selection_of_self_edge_or_outgoing_edges_implies_selection_of_i
     expr_ref_vector self_loop_or_outgoing_edges(m);
     expr_ref_vector incoming_edges(m);
     if (can_be_a_valid_sync_loop(i, j))
-        self_loop_or_outgoing_edges.push_back(m_autil.mk_gt(m_sk.mk_PFA_loop_counter(eqid, i, j), m_autil.mk_int(0)));
-
+        self_loop_or_outgoing_edges.push_back(m_autil.mk_ge(m_sk.mk_PFA_loop_counter(eqid, i, j), m_autil.mk_int(1)));
     if (i+1 < FA_left.size()) self_loop_or_outgoing_edges.push_back(m_sk.mk_PFA_edge_selection(eqid, std::make_pair(i, j), std::make_pair(i+1, j)));
     if (j+1 < FA_right.size()) self_loop_or_outgoing_edges.push_back(m_sk.mk_PFA_edge_selection(eqid, std::make_pair(i, j), std::make_pair(i, j+1)));
     if (i+1<FA_left.size() && j+1<FA_right.size()) self_loop_or_outgoing_edges.push_back(m_sk.mk_PFA_edge_selection(eqid, std::make_pair(i, j), std::make_pair(i+1, j+1)));
@@ -453,8 +452,11 @@ void theory_seq::selection_of_self_edge_or_outgoing_edges_implies_selection_of_i
     if (j >= 1) incoming_edges.push_back(m_sk.mk_PFA_edge_selection(eqid, std::make_pair(i, j-1), std::make_pair(i, j)));
     if (i>=1 && j>=1) incoming_edges.push_back(m_sk.mk_PFA_edge_selection(eqid, std::make_pair(i-1, j-1), std::make_pair(i, j)));
 
-    if (self_loop_or_outgoing_edges.size()>0 && incoming_edges.size()>0)
-        m.mk_implies(m.mk_or(self_loop_or_outgoing_edges), m.mk_or(incoming_edges));
+    if (self_loop_or_outgoing_edges.size()>0 && incoming_edges.size()>0) {
+        add_axiom(~mk_literal(m.mk_or(self_loop_or_outgoing_edges)), mk_literal(m.mk_or(incoming_edges)));
+        FINALCHECK("selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges:\n";);
+        FINALCHECK(mk_pp(expr_ref(m.mk_implies(m.mk_or(self_loop_or_outgoing_edges), m.mk_or(incoming_edges)), m), m) << "\n";);
+    }
 }
 
 void theory_seq::at_least_one_incoming_edge_of_final_state_should_be_selected(unsigned eqid) {
@@ -512,9 +514,9 @@ void theory_seq::flatten_string_constraints() {
 
                     // 3rd: only at most one out-going edge of one state can be selected.
                     only_at_most_one_outgoing_edge_of_one_state_can_be_selected(eq.id(), i, j);
-//
-//                // 4th: selection of self edges or out-going edges implies selection of in-coming edges
-//                selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(eq.id(), i, j);
+
+                    // 4th: selection of self edges or out-going edges implies selection of in-coming edges
+                    selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(eq.id(), i, j);
                 }
             }
 //

@@ -204,25 +204,25 @@ expr_ref skolem::mk_step(expr* s, expr* idx, expr* re, unsigned i, unsigned j, e
 expr_ref skolem::mk_parikh_image_counter(expr *var, expr *ch) {
     return expr_ref(seq.mk_skolem(symbol("seq.parikh_image_counter"), 2,
         std::initializer_list<expr*>({var, ch}).begin(),
-        m.mk_sort(a.get_family_id(), INT_SORT)), m);
+        a.mk_int()), m);
 }
 
 expr_ref skolem::mk_FA_self_loop_char(expr *var, unsigned i) {
      return expr_ref(seq.mk_skolem(symbol("seq.fa_self_loop_char"), 2,
         std::initializer_list<expr*>({var, a.mk_int(i)}).begin(),
-        var->get_sort()), m);
+        seq.mk_string_sort()), m);
 }
 
 expr_ref skolem::mk_FA_self_loop_counter(expr *var, unsigned i) {
     return expr_ref(seq.mk_skolem(symbol("seq.fa_self_loop_counter"), 2,
         std::initializer_list<expr*>({var, a.mk_int(i)}).begin(),
-        m.mk_sort(a.get_family_id(), INT_SORT)), m);
+        a.mk_int()), m);
 }
 
 expr_ref skolem::mk_PFA_loop_counter(unsigned eqid, unsigned i, unsigned j) {
     return expr_ref(seq.mk_skolem(symbol("seq.pfa_loop_counter"), 3,
         std::initializer_list<expr*>({a.mk_int(eqid), a.mk_int(i), a.mk_int(j)}).begin(),
-        m.mk_sort(a.get_family_id(), INT_SORT)), m);
+        a.mk_int()), m);
 }
 
 expr_ref skolem::mk_PFA_edge_selection(unsigned eqid, const std::pair<int, int> &state1, const std::pair<int, int> &state2) {
