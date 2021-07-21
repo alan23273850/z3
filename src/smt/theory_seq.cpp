@@ -466,11 +466,15 @@ void theory_seq::at_least_one_incoming_edge_of_final_state_should_be_selected(un
     if (FA_right.size() >= 2) incoming_edges.push_back(m_sk.mk_PFA_edge_selection(eqid, std::make_pair(FA_left.size()-1, FA_right.size()-2), std::make_pair(FA_left.size()-1, FA_right.size()-1)));
     if (FA_left.size()>=2 && FA_right.size()>=2) incoming_edges.push_back(m_sk.mk_PFA_edge_selection(eqid, std::make_pair(FA_left.size()-2, FA_right.size()-2), std::make_pair(FA_left.size()-1, FA_right.size()-1)));
 
-    if (incoming_edges.size()>0)
+    if (incoming_edges.size()>0) {
         add_axiom(mk_literal(m.mk_or(incoming_edges)));
+        FINALCHECK("at_least_one_incoming_edge_of_final_state_should_be_selected:\n";);
+        FINALCHECK(mk_pp(expr_ref(m.mk_or(incoming_edges), m), m) << "\n";);
+    }
 }
 
 void theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(unsigned eqid) {
+    FINALCHECK("sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA:\n";);
     for (unsigned i=0; i<FA_left.size(); i++) {
         expr_ref_vector loops(m);
         for (unsigned j=0; j<FA_right.size(); j++) {
@@ -478,7 +482,8 @@ void theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_t
                 loops.push_back(m_sk.mk_PFA_loop_counter(eqid, i, j));
         }
         expr_ref sum_loop(m_autil.mk_add(loops), m);
-        add_axiom(mk_eq(sum_loop, FA_left.counters[i].get(), false));
+        add_axiom(mk_literal(m.mk_eq(sum_loop, FA_left.counters[i].get())));
+        FINALCHECK(mk_pp(expr_ref(m.mk_eq(sum_loop, FA_left.counters[i].get()), m), m) << "\n";);
     }
     for (unsigned j=0; j<FA_right.size(); j++) {
         expr_ref_vector loops(m);
@@ -487,14 +492,15 @@ void theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_t
                 loops.push_back(m_sk.mk_PFA_loop_counter(eqid, i, j));
         }
         expr_ref sum_loop(m_autil.mk_add(loops), m);
-        add_axiom(mk_eq(sum_loop, FA_right.counters[j].get(), false));
+        add_axiom(mk_literal(m.mk_eq(sum_loop, FA_right.counters[j].get())));
+        FINALCHECK(mk_pp(expr_ref(m.mk_eq(sum_loop, FA_right.counters[j].get()), m), m) << "\n";);
     }
 }
 
 void theory_seq::flatten_string_constraints() {
     for (const auto &eq: m_eqs) {
         if(!m_flatterned_eqids.contains(eq.id())) {
-
+            m_flatterned_eqids.push_back(eq.id());
 
             display_equation(std::cout, eq);
 
@@ -519,14 +525,12 @@ void theory_seq::flatten_string_constraints() {
                     selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(eq.id(), i, j);
                 }
             }
-//
-//        // 5th: at least one in-coming edge of final state should be selected.
-//        at_least_one_incoming_edge_of_final_state_should_be_selected(eq.id());
-//
-//        // 6th: sum of edges for a single loop on the PFA must be mapped back to the original FA.
-//        sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(eq.id());
 
-            m_flatterned_eqids.push_back(eq.id());
+            // 5th: at least one in-coming edge of final state should be selected.
+            at_least_one_incoming_edge_of_final_state_should_be_selected(eq.id());
+
+            // 6th: sum of edges for a single loop on the PFA must be mapped back to the original FA.
+            sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(eq.id());
         }
     }
 }
