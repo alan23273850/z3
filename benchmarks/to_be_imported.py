@@ -9,7 +9,7 @@ def from_file_to_data_row(file):
     t = res = msg = ''
     # p = subprocess.run(f"cat {file} | cat - <(echo ''; echo '(get-model)') |" + r"sed 's/(set-logic[^)]*)/(set-logic ALL)/g; s/(set-option[^)]*:strings-exp[^)]*)//g' |" \
     #     "time -p ~/z3-4.8.9 -in", shell=True, capture_output=True, executable='/bin/bash')
-    p = subprocess.run(f"time -p timeout 10 z3 {file}", shell=True, capture_output=True, executable='/bin/bash')
+    p = subprocess.run(f"time -p timeout 10 ./z3 {file}", shell=True, capture_output=True, executable='/bin/bash')
     t = p.stderr.splitlines()[-3].decode('utf-8'); t = t[t.rfind('real '):]; assert t.startswith('real '); t = t.split(' ')[1]
     msg = ' '.join(map(lambda x: x.decode('utf-8'), p.stderr.splitlines()[:-3]))
     try:
