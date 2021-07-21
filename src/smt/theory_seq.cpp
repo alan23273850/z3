@@ -387,11 +387,9 @@ void theory_seq::from_word_term_to_FA(const expr_ref_vector &term, struct FA &FA
             FA.counters.push_back(m_autil.mk_int(1));
         } else {
             for (int i=0; i<2; i++) { // TODO: 2 -> p
-                FA.characters.push_back(m_sk.mk_FA_self_loop_char(atom, i));
+                FA.characters.push_back(m_sk.mk_FA_self_loop_string(atom, i));
                 FA.counters.push_back(m_sk.mk_FA_self_loop_counter(atom, i));
             }
-            // add_axiom(mk_eq(atom, mk_concat(mk_mul(m_sk.mk_FA_self_loop_char(atom, 0), m_sk.mk_FA_self_loop_counter(m_sk.mk_FA_self_loop_char(atom, 0))),
-            //                                 mk_mul(m_sk.mk_FA_self_loop_char(atom, 1), m_sk.mk_FA_self_loop_counter(m_sk.mk_FA_self_loop_char(atom, 1)))), false));
         }
     }
 }
@@ -500,6 +498,24 @@ void theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_t
     }
 }
 
+void theory_seq::length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const depeq &eq) {
+    FINALCHECK("length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times:\n";);
+    for (const auto &term: {eq.ls, eq.rs}) {
+        for (const auto &atom: term) {
+            expr *ch; // TODO: hope ch is not needed if we don't want a const char.
+            if (!atom_is_const_char(atom, ch)) {
+                expr_ref_vector loops(m);
+                for (int i=0; i<2; i++) { // TODO: 2 -> p
+                    loops.push_back(m_autil.mk_mul(m_util.str.mk_length(m_sk.mk_FA_self_loop_string(atom, i)), m_sk.mk_FA_self_loop_counter(atom, i)));
+                }
+                expr_ref sum_loop(m_autil.mk_add(loops), m);
+                add_axiom(mk_literal(m.mk_eq(m_util.str.mk_length(atom), sum_loop.get())));
+                FINALCHECK(mk_pp(expr_ref(m.mk_eq(m_util.str.mk_length(atom), sum_loop.get()), m), m) << "\n";);
+            }
+        }
+    }
+}
+
 void theory_seq::flatten_string_constraints() {
     for (const auto &eq: m_eqs) {
         if(!m_flatterned_eqids.contains(eq.id())) {
@@ -534,6 +550,9 @@ void theory_seq::flatten_string_constraints() {
 
             // 6th: sum of edges for a single loop on the PFA must be mapped back to the original FA.
             sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(eq.id());
+
+            // 7th: len(x) == sum_i { len(x_i) * times(x_i) }
+            length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(eq);
         }
     }
 }
