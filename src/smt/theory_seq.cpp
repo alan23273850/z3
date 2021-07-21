@@ -623,13 +623,15 @@ final_check_status theory_seq::final_check_eh() {
     TRACE("seq_verbose", ctx.display(tout););
     flatten_string_constraints();
 
+    if (m_nqs.size()>0 || m_ncs.size()>0 || m_rcs.size()>0)
+        return FC_GIVEUP;
+
     for (const auto &eq: m_eqs) {
         from_word_term_to_FA(eq.ls, FA_left);
         from_word_term_to_FA(eq.rs, FA_right);
         for (unsigned i = 0; i < FA_left.size(); i++) {
             rational _val;
             expr *e = FA_left.counters.get(i);
-            expr *var = FA_left.characters.get(i);
 
             arith_value v(get_manager());
             v.init(&ctx);
@@ -745,22 +747,6 @@ final_check_status theory_seq::final_check_eh() {
 //         TRACEFIN("branch_ne");
 //         return FC_CONTINUE;
 //     }
-
-//    for(auto eq:m_eqs){
-//        FINALCHECK(eq.ls << " = " << eq.rs << "\n";);
-//    }
-//    for(auto nq:m_nqs){
-//        FINALCHECK(nq.l() << " != " << nq.r() << "\n";);
-//    }
-//
-//    for(auto nc:m_ncs) {
-//        FINALCHECK( "not " << mk_pp(nc.contains(), m) << "\n";);
-//    }
-//    for(auto rc:m_rcs) {
-//        FINALCHECK(m_rcs[0].term() <<" in "<<m_rcs[1].re() << "\n";);
-//
-//    }
-
 
     if (m_unhandled_expr) {
         TRACEFIN("give_up");
