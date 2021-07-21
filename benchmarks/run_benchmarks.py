@@ -3,6 +3,8 @@ import argparse, os, sys
 from to_be_imported import from_file_to_data_row
 import subprocess
 
+os.system('cd ../build; make -j4; cp ./z3 ../benchmarks; cd -')
+
 f = argparse.RawTextHelpFormatter._split_lines
 argparse.RawTextHelpFormatter._split_lines = lambda *args, **kwargs: f(*args, **kwargs) + ['']
 parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
