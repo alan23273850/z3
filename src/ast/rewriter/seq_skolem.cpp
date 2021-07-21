@@ -207,8 +207,8 @@ expr_ref skolem::mk_parikh_image_counter(expr *var, expr *ch) {
         a.mk_int()), m);
 }
 
-expr_ref skolem::mk_FA_self_loop_char(expr *var, unsigned i) {
-     return expr_ref(seq.mk_skolem(symbol("seq.fa_self_loop_char"), 2,
+expr_ref skolem::mk_FA_self_loop_string(expr *var, unsigned i) {
+     return expr_ref(seq.mk_skolem(symbol("seq.fa_self_loop_string"), 2,
         std::initializer_list<expr*>({var, a.mk_int(i)}).begin(),
         seq.mk_string_sort()), m);
 }

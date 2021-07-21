@@ -479,6 +479,7 @@ namespace smt {
         void selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(unsigned eqid, unsigned i, unsigned j);
         void at_least_one_incoming_edge_of_final_state_should_be_selected(unsigned eqid);
         void sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(unsigned eqid);
+        void length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const depeq &eq);
         /***************************************************************************************************/
 
         // final check 
