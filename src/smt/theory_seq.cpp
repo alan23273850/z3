@@ -399,6 +399,8 @@ void theory_seq::from_word_term_to_FA(const expr_ref_vector &term, struct FA &FA
 
 void theory_seq::if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(unsigned eqid, int i, int j) {
     if (can_be_a_valid_sync_loop(i, j)) {
+
+        expr* e = m_sk.mk_PFA_loop_counter(eqid, i, j).get();
         expr_ref loop_i_j_gt_zero(m_autil.mk_ge(m_sk.mk_PFA_loop_counter(eqid, i, j), m_autil.mk_int(1)), m);
         expr_ref char_i_equals_char_j(m.mk_eq(FA_left.characters[i].get(), FA_right.characters[j].get()), m);
         add_axiom(~mk_literal(loop_i_j_gt_zero), mk_literal(char_i_equals_char_j));
@@ -600,6 +602,36 @@ final_check_status theory_seq::final_check_eh() {
     TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
     TRACE("seq_verbose", ctx.display(tout););
     flatten_string_constraints();
+
+    for (const auto &eq: m_eqs) {
+        from_word_term_to_FA(eq.ls, FA_left);
+        from_word_term_to_FA(eq.rs, FA_right);
+        for (unsigned i = 0; i < FA_left.size(); i++) {
+            rational _val;
+            expr *e = FA_left.counters.get(i);
+            expr *var = FA_left.characters.get(i);
+
+            arith_value v(get_manager());
+            v.init(&ctx);
+            final_check_status arith_fc_status = v.final_check();
+            if (arith_fc_status == FC_DONE) {
+                if (v.get_value(e, _val)) {
+                    FINALCHECK("\n FA_left.counters[" << i << "] = " << _val;);
+                } else {
+                    FINALCHECK("\n FA_left.counters[" << i << "] = NaN\n";);
+                    return FC_CONTINUE;
+                }
+
+
+            } else {
+                FINALCHECK("\nno value";);
+                return FC_CONTINUE;
+            }
+        }
+    }
+    FINALCHECK("\n";);
+
+
     return FC_DONE;
 
     if (check_parikh_image()) {
