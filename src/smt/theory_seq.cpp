@@ -394,8 +394,6 @@ void theory_seq::from_word_term_to_FA(const expr_ref_vector &term, struct FA &FA
     }
 }
 
-
-
 void theory_seq::if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(unsigned eqid, int i, int j) {
     if (can_be_a_valid_sync_loop(i, j)) {
         expr_ref loop_i_j_gt_zero(m_autil.mk_ge(m_sk.mk_PFA_loop_counter(eqid, i, j), m_autil.mk_int(1)), m);
@@ -403,6 +401,15 @@ void theory_seq::if_a_loop_is_taken_the_two_characters_on_its_label_should_be_eq
         add_axiom(~mk_literal(loop_i_j_gt_zero), mk_literal(char_i_equals_char_j));
         FINALCHECK("if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal: \n" << mk_pp(m_sk.mk_PFA_loop_counter(eqid, i, j), m) << "> 0 ==> ";);
         FINALCHECK(mk_pp(FA_left.characters[i].get(), m) << " = " << mk_pp(FA_right.characters[j].get(), m)  << "\n";);
+    }
+}
+
+void theory_seq::if_a_loop_is_taken_then_its_counter_should_be_nonnegative(unsigned eqid, int i, int j) {
+    if (can_be_a_valid_sync_loop(i, j)) {
+        expr_ref loop_i_j_not_less_than_zero(m_autil.mk_ge(m_sk.mk_PFA_loop_counter(eqid, i, j), m_autil.mk_int(0)), m);
+        add_axiom(mk_literal(loop_i_j_not_less_than_zero));
+        FINALCHECK("if_a_loop_is_taken_then_its_counter_should_be_nonnegative:\n";);
+        FINALCHECK(mk_pp(loop_i_j_not_less_than_zero, m) << "\n";);
     }
 }
 
@@ -530,7 +537,9 @@ void theory_seq::flatten_string_constraints(int size) {
             for (unsigned i = 0; i < FA_left.size(); i++) {
                 for (unsigned j = 0; j < FA_right.size(); j++) {
                     // 1st: for each possibly valid sync loop, the two characters on that loop must be the same.
+                    // Besides, counters of each enabled sync loop must be nonnegative.
                     if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(eq.id(), i, j);
+                    if_a_loop_is_taken_then_its_counter_should_be_nonnegative(eq.id(), i, j);
 
                     // 2nd: only at most one in-coming edge of one state can be selected.
                     only_at_most_one_incoming_edge_of_one_state_can_be_selected(eq.id(), i, j);
