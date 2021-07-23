@@ -310,6 +310,7 @@ void theory_seq::init() {
 
 #define TRACEFIN(s) { TRACE("seq", tout << ">>" << s << "\n";); IF_VERBOSE(20, verbose_stream() << s << "\n"); }
 #define FINALCHECK(STREAM) { if (is_debug_enabled("fc")) { std::cout << STREAM } }
+#define DISPLAYMODEL(STREAM) { if (is_debug_enabled("model")) { std::cout << STREAM } }
 
 struct scoped_enable_trace {
     scoped_enable_trace() {
@@ -633,26 +634,40 @@ final_check_status theory_seq::final_check_eh() {
     if (/*m_nqs.size()>0 ||*/ m_ncs.size()>0 || m_rcs.size()>0)
         return FC_GIVEUP;
 
-    for (const auto &eq: m_eqs) {
-        from_word_term_to_FA(eq.ls, FA_left, 5);
-        from_word_term_to_FA(eq.rs, FA_right, 5);
-        for (unsigned i = 0; i < FA_left.size(); i++) {
-            rational _val;
-            expr *e = FA_left.counters.get(i);
-
-            arith_value v(get_manager());
-            v.init(&ctx);
-            final_check_status arith_fc_status = v.final_check();
-            if (arith_fc_status == FC_DONE) {
-                if (v.get_value(e, _val)) {
-                    FINALCHECK("\n FA_left.counters[" << i << "] = " << _val;);
-                } else {
-                    FINALCHECK("\n FA_left.counters[" << i << "] = NaN\n";);
-                    return FC_CONTINUE;
+    final_check_status arith_fc_status = m_arith_value.final_check();
+    if (arith_fc_status == FC_DONE) {
+        for (const auto &eq: m_eqs) {
+            for (const auto &term: {eq.ls, eq.rs}) {
+                for (const auto &atom: term) {
+                    expr *ch;
+                    if (!atom_is_const_char(atom, ch)) {
+                        rational _val;
+                        DISPLAYMODEL("[" << mk_pp(atom, m) << "] ==> ";);
+                        for (int i=0; i<5; i++) {
+                            get_num_value(m_sk.mk_FA_self_loop_counter(atom, i), _val);
+                            expr_ref result(m);
+                            expr *e = m_sk.mk_FA_self_loop_string(atom, i);
+                            e = get_ite_value(e);
+                            result = m_rep.find(e);
+                            if (is_var(result)) {
+                                if (!m_factory) continue;
+                                SASSERT(m_factory);
+                                expr_ref val(m);
+                                val = m_factory->get_fresh_value(result->get_sort());
+                                if (val) {
+                                    result = val;
+                                }
+                            }
+                            else {
+                                m_rewrite(result);
+                            }
+                            for (int j=0; j<_val; j++) {
+                                DISPLAYMODEL(result;);
+                            }
+                        }
+                        DISPLAYMODEL("\n";);
+                    }
                 }
-            } else {
-                FINALCHECK("\nno value";);
-                return FC_CONTINUE;
             }
         }
     }
