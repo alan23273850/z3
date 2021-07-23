@@ -20,6 +20,9 @@ if args.mode == '1':
 elif args.mode == '2':
     args.mode = 'large'
     data = list(os.walk('trauc'))
+elif args.mode == '3':
+    args.mode = 'random'
+    data = list(os.walk('random_word_equation_1000'))
 
 with open(f"statistics/{args.message}_{args.mode}.csv", 'w', buffering=1) as f:
     # print('filename,z3-time,z3-res,cvc4-time,cvc4-res,trau-time,trau-res,trau-msg,final', file=f)

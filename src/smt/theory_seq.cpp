@@ -378,7 +378,7 @@ bool theory_seq::can_be_a_valid_sync_loop(unsigned i, unsigned j) {
         ch1 != ch2);
 }
 
-void theory_seq::from_word_term_to_FA(const expr_ref_vector &term, struct FA &FA) {
+void theory_seq::from_word_term_to_FA(const expr_ref_vector &term, struct FA &FA, int p) {
     FA.clear();
     for (const auto &atom: term) {
         expr *ch;
@@ -386,7 +386,7 @@ void theory_seq::from_word_term_to_FA(const expr_ref_vector &term, struct FA &FA
             FA.characters.push_back(atom); // TODO: maybe "atom" is also ok? Then "ch" is not necessary.
             FA.counters.push_back(m_autil.mk_int(1));
         } else {
-            for (int i=0; i<2; i++) { // TODO: 2 -> p
+            for (int i=0; i<p; i++) {
                 FA.characters.push_back(m_sk.mk_FA_self_loop_string(atom, i));
                 FA.counters.push_back(m_sk.mk_FA_self_loop_counter(atom, i));
             }
@@ -398,8 +398,6 @@ void theory_seq::from_word_term_to_FA(const expr_ref_vector &term, struct FA &FA
 
 void theory_seq::if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(unsigned eqid, int i, int j) {
     if (can_be_a_valid_sync_loop(i, j)) {
-
-        expr* e = m_sk.mk_PFA_loop_counter(eqid, i, j).get();
         expr_ref loop_i_j_gt_zero(m_autil.mk_ge(m_sk.mk_PFA_loop_counter(eqid, i, j), m_autil.mk_int(1)), m);
         expr_ref char_i_equals_char_j(m.mk_eq(FA_left.characters[i].get(), FA_right.characters[j].get()), m);
         add_axiom(~mk_literal(loop_i_j_gt_zero), mk_literal(char_i_equals_char_j));
@@ -498,14 +496,14 @@ void theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_t
     }
 }
 
-void theory_seq::length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const depeq &eq) {
+void theory_seq::length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const depeq &eq, int p) {
     FINALCHECK("length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times:\n";);
     for (const auto &term: {eq.ls, eq.rs}) {
         for (const auto &atom: term) {
             expr *ch; // TODO: hope ch is not needed if we don't want a const char.
             if (!atom_is_const_char(atom, ch)) {
                 expr_ref_vector loops(m);
-                for (int i=0; i<2; i++) { // TODO: 2 -> p
+                for (int i=0; i<p; i++) {
                     loops.push_back(m_autil.mk_mul(m_util.str.mk_length(m_sk.mk_FA_self_loop_string(atom, i)), m_sk.mk_FA_self_loop_counter(atom, i)));
                 }
                 expr_ref sum_loop(m_autil.mk_add(loops), m);
@@ -516,15 +514,15 @@ void theory_seq::length_of_string_variable_equals_sum_of_loop_length_multiplied_
     }
 }
 
-void theory_seq::flatten_string_constraints() {
+void theory_seq::flatten_string_constraints(int size) {
     for (const auto &eq: m_eqs) {
         if(!m_flatterned_eqids.contains(eq.id())) {
             m_flatterned_eqids.push_back(eq.id());
 
             display_equation(std::cout, eq);
 
-            from_word_term_to_FA(eq.ls, FA_left);
-            from_word_term_to_FA(eq.rs, FA_right);
+            from_word_term_to_FA(eq.ls, FA_left, size);
+            from_word_term_to_FA(eq.rs, FA_right, size);
 
             FINALCHECK("FA left = \n" << FA_left;);
             FINALCHECK("FA right = \n" << FA_right;);
@@ -552,7 +550,7 @@ void theory_seq::flatten_string_constraints() {
             sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(eq.id());
 
             // 7th: len(x) == sum_i { len(x_i) * times(x_i) }
-            length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(eq);
+            length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(eq, size);
         }
     }
 }
@@ -621,14 +619,14 @@ final_check_status theory_seq::final_check_eh() {
     m_new_propagation = false;
     TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
     TRACE("seq_verbose", ctx.display(tout););
-    flatten_string_constraints();
-
-    if (m_nqs.size()>0 || m_ncs.size()>0 || m_rcs.size()>0)
+    flatten_string_constraints(5);
+    // std::cout << m_nqs.size() << "\n";
+    if (/*m_nqs.size()>0 ||*/ m_ncs.size()>0 || m_rcs.size()>0)
         return FC_GIVEUP;
 
     for (const auto &eq: m_eqs) {
-        from_word_term_to_FA(eq.ls, FA_left);
-        from_word_term_to_FA(eq.rs, FA_right);
+        from_word_term_to_FA(eq.ls, FA_left, 5);
+        from_word_term_to_FA(eq.rs, FA_right, 5);
         for (unsigned i = 0; i < FA_left.size(); i++) {
             rational _val;
             expr *e = FA_left.counters.get(i);
@@ -643,8 +641,6 @@ final_check_status theory_seq::final_check_eh() {
                     FINALCHECK("\n FA_left.counters[" << i << "] = NaN\n";);
                     return FC_CONTINUE;
                 }
-
-
             } else {
                 FINALCHECK("\nno value";);
                 return FC_CONTINUE;
@@ -652,8 +648,6 @@ final_check_status theory_seq::final_check_eh() {
         }
     }
     FINALCHECK("\n";);
-
-
     return FC_DONE;
 
     if (check_parikh_image()) {
