@@ -240,29 +240,39 @@ bool theory_seq::branch_variable() {
     return false;
 }
 
+/*
+    For all eqs in m_eqs, starting from one random eq,
+    if satisfying 3 conditions below, propagate |LHS| = |RHS| (not adding to m_eqs),
+    until one eq can be split following the format: LHS = <------ X ------> .........
+                                                  : RHS = <-- b's --><--- Y ----> ...
+                                                        = <-- b's --><-Y1-><-Y2-> ...
+    (LHS and RHS can be exchanged if possible) where X is a nonempty var, X and Y are
+    different identities, and: if |Y| = 1, propagate: X = b's.Y (adding to m_eqs)
+                             : if |Y| > 1 and Y is var, propagate: X=b's.Y1 and Y=Y1.Y2 (adding to m_eqs)
+*/
 bool theory_seq::branch_variable_mb() {
     bool change = false;
     unsigned sz = m_eqs.size();
     // int start = ctx.get_random_value();
     for (unsigned i = 0; i < sz; ++i) {
-        unsigned k = (i ) % sz;
-        depeq const& e = m_eqs[k];
+        unsigned k = (i) % sz; // start from an arbitrary position
+        depeq const& e = m_eqs[k]; // iterate through all equalities
         vector<rational> len1, len2;
-        if (!is_complex(e)) {//one side does not have variable, both each side has only one variable
+        if (!is_complex(e)) { //one side does not have variable, both each side has only one variable
             continue;
-        }
-        if (e.ls.empty() || e.rs.empty() ||
+        } // ensure (e): both sides have vars and at least one side has two or more vars
+        if (e.ls.empty() || e.rs.empty() || // maybe conditions in this line are redundant?
             (!is_var(e.ls[0]) && !is_var(e.rs[0]))) {
             continue;
-        }
+        } // ensure (e): at least one side's first element is var.
 
         if (!enforce_length(e.ls, len1) || !enforce_length(e.rs, len2)) {
             // change = true;
             continue;
-        }
+        } // ensure (e): all elements have certain lengths, and len1, len2 store them.
         rational l1, l2;
         for (const auto& elem : len1) l1 += elem;
-        for (const auto& elem : len2) l2 += elem;
+        for (const auto& elem : len2) l2 += elem; // maybe (l1 == l2) must be true?
         if (l1 == l2 && split_lengths(e.dep(), e.ls, e.rs, len1, len2)) {
             TRACE("seq", tout << "split lengths\n";);
             change = true;
@@ -302,6 +312,8 @@ bool theory_seq::is_complex(depeq const& e) {
    3. |X| = 0
       - propagate X = empty      
 */
+// Already assume all elements in ls and rs have certain lengths?
+// Already assume |ls| == |rs|?
 bool theory_seq::split_lengths(dependency* dep,
                                expr_ref_vector const& ls, expr_ref_vector const& rs, 
                                vector<rational> const& ll, vector<rational> const& rl) {
@@ -320,7 +332,7 @@ bool theory_seq::split_lengths(dependency* dep,
     }
     if (!is_var(ls[0])) {
         return false;
-    }
+    } // ensure LHS's first element is non-empty var, and RHS's first element, if var, is also non-empty.
     X = ls[0];
     rational lenX = ll[0];
     expr_ref_vector bs(m);
@@ -334,23 +346,26 @@ bool theory_seq::split_lengths(dependency* dep,
     SASSERT(lenX <= lenB);
     SASSERT(!bs.empty());
     Y = bs.back();
-    bs.pop_back();
+    bs.pop_back(); // notice that "lenB" does not shrink here.
     if (!is_var(Y) && !m_util.str.is_unit(Y)) {
         TRACE("seq", tout << "TBD: non variable or unit split: " << Y << "\n";);
         return false;
-    }
+    } // ensure Y is var or |Y| = 1.
     if (X == Y) {
         TRACE("seq", tout << "Cycle: " << X << "\n";);
         return false;
-    }
+    } // ensure X != Y.
     if (lenY.is_zero()) {
         return set_empty(Y);
-    }
+    } // ensure |Y| >= 1.
     b = mk_concat(bs, X->get_sort());
 
     SASSERT(X != Y);
 
-    // |b| < |X| <= |b| + |Y| => x = bY1, Y = Y1Y2
+    // |b| < |X| <= |b| + |Y| => X = bY1, Y = Y1Y2
+    // LHS = <----- X -----> ........
+    // RHS = <-- b --><--- Y ----> ...
+    //     = <-- b --><-Y1-><-Y2-> ...
     expr_ref lenXE = mk_len(X);
     expr_ref lenYE = mk_len(Y);
     expr_ref lenb = mk_len(b);
@@ -364,8 +379,8 @@ bool theory_seq::split_lengths(dependency* dep,
         ctx.get_assignment(lit2) != l_true) {
         ctx.mark_as_relevant(lit1);
         ctx.mark_as_relevant(lit2);
-    }
-    else if (m_util.str.is_unit(Y)) {
+    } // only propagate_eq if both lit1 and lit2 are true?
+    else if (m_util.str.is_unit(Y)) { // not sure if |Y|=1 is already added into axioms.
         SASSERT(lenB == lenX);
         bs.push_back(Y);
         expr_ref bY = mk_concat(bs, Y->get_sort());
