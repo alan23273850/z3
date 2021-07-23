@@ -1,0 +1,10 @@
+(declare-fun c () String)
+(declare-fun g () String)
+(declare-fun d () String)
+(declare-fun f () String)
+(declare-fun a () String)
+(assert (= "a" "c"))
+(assert (= (str.++ d c "eed" a) (str.++ "fh" g "c")))
+(assert (= (str.++ f c "af") "cga"))
+
+(check-sat)
