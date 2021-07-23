@@ -472,19 +472,19 @@ namespace smt {
 
         struct FA FA_left, FA_right;
         bool can_be_a_valid_sync_loop(unsigned i, unsigned j);
-        void from_word_term_to_FA(const expr_ref_vector &term, struct FA &FA);
+        void from_word_term_to_FA(const expr_ref_vector &term, struct FA &FA, int p);
         void if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(unsigned eqid, int i, int j);
         void only_at_most_one_incoming_edge_of_one_state_can_be_selected(unsigned eqid, int i, int j);
         void only_at_most_one_outgoing_edge_of_one_state_can_be_selected(unsigned eqid, unsigned i, unsigned j);
         void selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(unsigned eqid, unsigned i, unsigned j);
         void at_least_one_incoming_edge_of_final_state_should_be_selected(unsigned eqid);
         void sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(unsigned eqid);
-        void length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const depeq &eq);
+        void length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const depeq &eq, int p);
         /***************************************************************************************************/
 
         // final check 
         void block_curr_assignment();
-        void flatten_string_constraints();
+        void flatten_string_constraints(int size);
         bool check_parikh_image();       // propagate check_parikh_image equalities
         bool simplify_and_solve_eqs();   // solve unitary equalities
         bool reduce_length_eq();
