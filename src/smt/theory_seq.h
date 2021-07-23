@@ -474,6 +474,7 @@ namespace smt {
         bool can_be_a_valid_sync_loop(unsigned i, unsigned j);
         void from_word_term_to_FA(const expr_ref_vector &term, struct FA &FA, int p);
         void if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(unsigned eqid, int i, int j);
+        void if_a_loop_is_taken_then_its_counter_should_be_nonnegative(unsigned eqid, int i, int j);
         void only_at_most_one_incoming_edge_of_one_state_can_be_selected(unsigned eqid, int i, int j);
         void only_at_most_one_outgoing_edge_of_one_state_can_be_selected(unsigned eqid, unsigned i, unsigned j);
         void selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(unsigned eqid, unsigned i, unsigned j);
