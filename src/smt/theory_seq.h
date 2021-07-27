@@ -495,6 +495,7 @@ namespace smt {
 
         // final check 
         bool is_under_approximation;
+        void print_formulas(zstring msg);
         void block_curr_assignment();
         void handle_disequalities();
         void flatten_string_constraints(int size);

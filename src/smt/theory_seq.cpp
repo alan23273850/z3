@@ -350,6 +350,29 @@ void theory_seq::block_curr_assignment() {
     FINALCHECK(__LINE__ << " leave " << __FUNCTION__ << std::endl;)
 }
 
+void theory_seq::print_formulas(zstring msg){
+    FINALCHECK(msg <<" \n";);
+
+    FINALCHECK("Word Equations:\n";);
+    for (auto const& eq:m_eqs) {
+        FINALCHECK(eq.ls << " = " <<eq.rs <<"\n";);
+    }
+    FINALCHECK("Word Disequalities:\n";);
+    for (auto const& dis:m_nqs) {
+        FINALCHECK(dis.l() << " != " <<dis.r() <<"\n";);
+    }
+
+    FINALCHECK("Not Contains:\n";);
+    for (auto const & nc:m_ncs){
+        FINALCHECK("not " << mk_bounded_pp(nc.contains(), m, 2)<<"\n";);
+    }
+
+    FINALCHECK("Regular Constraints:\n";);
+    for (auto const & rc:m_rcs){
+        FINALCHECK(rc.term() << " in " <<rc.re() <<"\n";);
+    }
+}
+
 void theory_seq::handle_disequalities() {
     for (unsigned i=0; i<m_nqs.size(); i++) {
         ne &nq = m_nqs.ref(i);
@@ -696,10 +719,16 @@ final_check_status theory_seq::final_check_eh() {
     TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
     TRACE("seq_verbose", ctx.display(tout););
 
+
+    print_formulas("start");
+
+
+
     if (check_parikh_image()) {
         TRACE("seq", tout << "check_parikh_image\n";);
         return FC_CONTINUE;
     }
+//    print_formulas("check_parikh_image");
 
 //     if (simplify_and_solve_eqs()) {
 //         ++m_stats.m_solve_eqs;
@@ -731,6 +760,8 @@ final_check_status theory_seq::final_check_eh() {
          TRACEFIN("split_based_on_length");
          return FC_CONTINUE;
      }
+//    print_formulas("len_based_split");
+
 //     if (fixed_length()) {
 //         ++m_stats.m_fixed_length;
 //         TRACEFIN("fixed_length");
@@ -762,6 +793,9 @@ final_check_status theory_seq::final_check_eh() {
         TRACE("seq", tout << "branch_variable_mb\n";);
         return FC_CONTINUE;
     }
+
+//    print_formulas("branch_variable_mb");
+
 //    if (branch_variable_eq()) {
 //        TRACE("seq", tout << "branch_variable_eq\n";);
 //        return FC_CONTINUE;
