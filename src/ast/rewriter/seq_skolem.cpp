@@ -201,6 +201,24 @@ expr_ref skolem::mk_step(expr* s, expr* idx, expr* re, unsigned i, unsigned j, e
     return expr_ref(seq.mk_skolem(m_aut_step, args.size(), args.data(), m.mk_bool_sort()), m);
 }
 
+expr_ref skolem::mk_nq_prefix(unsigned nqid) {
+    return expr_ref(seq.mk_skolem(symbol("seq.nq_prefix"), 1,
+        std::initializer_list<expr*>({a.mk_int(nqid)}).begin(),
+        seq.mk_string_sort()), m);
+}
+
+expr_ref skolem::mk_nq_diff_string(unsigned nqid, int side) {
+    return expr_ref(seq.mk_skolem(symbol("seq.nq_diff_string"), 2,
+        std::initializer_list<expr*>({a.mk_int(nqid), a.mk_int(side)}).begin(),
+        seq.mk_string_sort()), m);
+}
+
+expr_ref skolem::mk_nq_suffix(unsigned nqid, int side) {
+    return expr_ref(seq.mk_skolem(symbol("seq.nq_suffix"), 2,
+        std::initializer_list<expr*>({a.mk_int(nqid), a.mk_int(side)}).begin(),
+        seq.mk_string_sort()), m);
+}
+
 expr_ref skolem::mk_parikh_image_counter(expr *var, expr *ch) {
     return expr_ref(seq.mk_skolem(symbol("seq.parikh_image_counter"), 2,
         std::initializer_list<expr*>({var, ch}).begin(),

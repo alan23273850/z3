@@ -172,7 +172,7 @@ namespace smt {
             return depeq(m_eq_id++, ls, rs, dep);
         }        
 
-        // equalities that are decomposed by conacatenations
+        // equalities that are decomposed by concatenations
         typedef std::pair<expr_ref_vector, expr_ref_vector> decomposed_eq;
 
         class ne {      
@@ -181,11 +181,13 @@ namespace smt {
             literal_vector           m_lits;
             dependency*              m_dep;
         public:
+            unsigned                 m_id;
             ne(expr_ref const& l, expr_ref const& r, dependency* dep):
                 m_l(l), m_r(r), m_dep(dep) {
                     expr_ref_vector ls(l.get_manager()); ls.push_back(l);
                     expr_ref_vector rs(r.get_manager()); rs.push_back(r);
                     m_eqs.push_back(std::make_pair(ls, rs));
+                    m_id = 0;
                 }
 
             ne(expr_ref const& _l, expr_ref const& _r, vector<decomposed_eq> const& eqs, literal_vector const& lits, dependency* dep):
@@ -193,6 +195,7 @@ namespace smt {
                 m_eqs(eqs),
                 m_lits(lits),
                 m_dep(dep) {
+                    m_id = 0;
                 }
 
             vector<decomposed_eq> const& eqs() const { return m_eqs; }
@@ -344,7 +347,8 @@ namespace smt {
         scoped_vector<depeq>       m_eqs;        // set of current equations.
         scoped_vector<unsigned>    m_eqids_pkh;  // set of current equations not processed by check_parikh_image
         scoped_vector<expr*>       m_chars_pkh;  // set of characters to be used by check_parikh_image
-        scoped_vector<unsigned>    m_flatterned_eqids;  // set of flatterned word equation ids
+        scoped_vector<unsigned>    m_nqids;      // set of current word disequality ids not processed yet
+        scoped_vector<unsigned>    m_flattened_eqids;  // set of flattened word equation ids
         scoped_vector<ne>          m_nqs;        // set of current disequalities.
         scoped_vector<nc>          m_ncs;        // set of non-contains constraints.
         scoped_vector<rc>          m_rcs;        // set of regular experssion constraints.
@@ -352,6 +356,7 @@ namespace smt {
         scoped_vector<expr*>       m_lts;        // set of asserted str.<, str.<= literals
         bool                       m_lts_checked; 
         unsigned                   m_eq_id;
+        unsigned                   m_nq_id;
         th_union_find              m_find;
         seq_offset_eq              m_offset_eq;
 
@@ -436,6 +441,11 @@ namespace smt {
         expr* find_fst_non_empty_var(expr_ref_vector const& x);
         bool has_len_offset(expr_ref_vector const& ls, expr_ref_vector const& rs, int & diff);
 
+        enum {
+            LEFT_HAND_SIDE,
+            RIGHT_HAND_SIDE
+        };
+
         bool atom_is_const_char(expr *const e, expr* &ch);
 
         // flatten_string_constraints
@@ -484,8 +494,11 @@ namespace smt {
         /***************************************************************************************************/
 
         // final check 
+        bool is_under_approximation;
         void block_curr_assignment();
+        void handle_disequalities();
         void flatten_string_constraints(int size);
+        void print_model(int size);
         bool check_parikh_image();       // propagate check_parikh_image equalities
         bool simplify_and_solve_eqs();   // solve unitary equalities
         bool reduce_length_eq();

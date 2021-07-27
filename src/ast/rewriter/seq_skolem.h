@@ -98,6 +98,10 @@ namespace seq {
         expr_ref mk_max_unfolding_depth(unsigned d);
         expr_ref mk_length_limit(expr* e, unsigned d);
 
+        expr_ref mk_nq_prefix(unsigned nqid);
+        expr_ref mk_nq_diff_string(unsigned nqid, int side);
+        expr_ref mk_nq_suffix(unsigned nqid, int side);
+
         expr_ref mk_parikh_image_counter(expr *var, expr *ch);
         expr_ref mk_FA_self_loop_string(expr *var, unsigned i);
         expr_ref mk_FA_self_loop_counter(expr *var, unsigned i);

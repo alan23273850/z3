@@ -286,7 +286,8 @@ theory_seq::theory_seq(context& ctx):
     m_new_solution(false),
     m_new_propagation(false),
     FA_left(m),
-    FA_right(m) {
+    FA_right(m),
+    is_under_approximation(false) {
 }
 
 theory_seq::~theory_seq() {
@@ -347,6 +348,32 @@ void theory_seq::block_curr_assignment() {
 
     }
     FINALCHECK(__LINE__ << " leave " << __FUNCTION__ << std::endl;)
+}
+
+void theory_seq::handle_disequalities() {
+    for (unsigned i=0; i<m_nqs.size(); i++) {
+        ne &nq = m_nqs.ref(i);
+        if (!m_nqids.contains(nq.m_id)) {
+            nq.m_id = ++m_nq_id;
+            m_nqids.push_back(nq.m_id);
+            
+            // Case 1: len(lhs) != len(rhs)
+            literal case1 = mk_literal(m.mk_not(m_autil.mk_eq(m_util.str.mk_length(nq.l()), m_util.str.mk_length(nq.r()))));
+
+            // Case 2: len(lhs) == len(rhs) but lhs == (prefix).(diff).(suffix) and rhs == (prefix).(diff').(suffix')
+            // where (diff) != (diff') and len(diff) == len(diff') == 1.
+            expr_ref_vector andv(m);
+            // andv.push_back(m_autil.mk_eq(m_util.str.mk_length(nq.l()), m_util.str.mk_length(nq.r())));
+            andv.push_back(m.mk_eq(nq.l(), mk_concat(m_sk.mk_nq_prefix(nq.m_id), m_sk.mk_nq_diff_string(nq.m_id, LEFT_HAND_SIDE), m_sk.mk_nq_suffix(nq.m_id, LEFT_HAND_SIDE))));
+            andv.push_back(m.mk_eq(nq.r(), mk_concat(m_sk.mk_nq_prefix(nq.m_id), m_sk.mk_nq_diff_string(nq.m_id, RIGHT_HAND_SIDE), m_sk.mk_nq_suffix(nq.m_id, RIGHT_HAND_SIDE))));
+            andv.push_back(m.mk_not(m.mk_eq(m_sk.mk_nq_diff_string(nq.m_id, LEFT_HAND_SIDE), m_sk.mk_nq_diff_string(nq.m_id, RIGHT_HAND_SIDE))));
+            andv.push_back(m_autil.mk_eq(m_util.str.mk_length(m_sk.mk_nq_diff_string(nq.m_id, LEFT_HAND_SIDE)), m_util.str.mk_length(m_sk.mk_nq_diff_string(nq.m_id, RIGHT_HAND_SIDE))));
+            andv.push_back(m_autil.mk_eq(m_util.str.mk_length(m_sk.mk_nq_diff_string(nq.m_id, LEFT_HAND_SIDE)), m_autil.mk_int(1)));
+            literal case2 = mk_literal(m.mk_and(andv));
+
+            add_axiom(case1, case2);
+        }
+    }
 }
 
 bool theory_seq::atom_is_const_char(expr *const e, expr* &ch) {
@@ -523,8 +550,9 @@ void theory_seq::length_of_string_variable_equals_sum_of_loop_length_multiplied_
 
 void theory_seq::flatten_string_constraints(int size) {
     for (const auto &eq: m_eqs) {
-        if(!m_flatterned_eqids.contains(eq.id())) {
-            m_flatterned_eqids.push_back(eq.id());
+        if (!m_flattened_eqids.contains(eq.id())) {
+            m_flattened_eqids.push_back(eq.id());
+            is_under_approximation = true;
 
             display_equation(std::cout, eq);
 
@@ -617,22 +645,7 @@ bool theory_seq::check_parikh_image() {
     return change;
 }
 
-final_check_status theory_seq::final_check_eh() {
-    FINALCHECK("level: " << ctx.get_scope_level() << "\n";)
-
-    if (!m_has_seq) {
-        return FC_DONE;
-    }
-
-
-    m_new_propagation = false;
-    TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
-    TRACE("seq_verbose", ctx.display(tout););
-    flatten_string_constraints(5);
-    // std::cout << m_nqs.size() << "\n";
-    if (/*m_nqs.size()>0 ||*/ m_ncs.size()>0 || m_rcs.size()>0)
-        return FC_GIVEUP;
-
+void theory_seq::print_model(int size) {
     final_check_status arith_fc_status = m_arith_value.final_check();
     if (arith_fc_status == FC_DONE) {
         for (const auto &eq: m_eqs) {
@@ -642,7 +655,7 @@ final_check_status theory_seq::final_check_eh() {
                     if (!atom_is_const_char(atom, ch)) {
                         rational _val;
                         DISPLAYMODEL("[" << mk_pp(atom, m) << "] ==> ";);
-                        for (int i=0; i<5; i++) {
+                        for (int i=0; i<size; i++) {
                             get_num_value(m_sk.mk_FA_self_loop_counter(atom, i), _val);
                             expr_ref result(m);
                             expr *e = m_sk.mk_FA_self_loop_string(atom, i);
@@ -670,8 +683,18 @@ final_check_status theory_seq::final_check_eh() {
             }
         }
     }
-    FINALCHECK("\n";);
-    return FC_DONE;
+}
+
+final_check_status theory_seq::final_check_eh() {
+    FINALCHECK("level: " << ctx.get_scope_level() << "\n";)
+
+    if (!m_has_seq) {
+        return FC_DONE;
+    }
+
+    m_new_propagation = false;
+    TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
+    TRACE("seq_verbose", ctx.display(tout););
 
     if (check_parikh_image()) {
         TRACE("seq", tout << "check_parikh_image\n";);
@@ -765,11 +788,18 @@ final_check_status theory_seq::final_check_eh() {
 //         return FC_CONTINUE;
 //     }
 
+    handle_disequalities();
+
+    flatten_string_constraints(7);
+
+    // print_model(7);
+
     if (m_unhandled_expr) {
         TRACEFIN("give_up");
         TRACE("seq", tout << "unhandled: " << mk_pp(m_unhandled_expr, m) << "\n";);
         return FC_GIVEUP;
     }
+
     if (is_solved()) {
         //scoped_enable_trace _se;
         TRACEFIN("is_solved");
@@ -1037,16 +1067,16 @@ bool theory_seq::check_lts() {
 */
 
 bool theory_seq::is_solved() {
-    if (!m_eqs.empty()) {
-        TRACE("seq", tout << "(seq.giveup " << m_eqs[0].ls << " = " << m_eqs[0].rs << " is unsolved)\n";);
-        IF_VERBOSE(10, verbose_stream() << "(seq.giveup " << m_eqs[0].ls << " = " << m_eqs[0].rs << " is unsolved)\n";);
-        return false;
-    }
-    if (!m_nqs.empty()) {
-        TRACE("seq", tout << "(seq.giveup " << m_nqs[0].l() << " != " << m_nqs[0].r() << " is unsolved)\n";);
-        IF_VERBOSE(10, verbose_stream() << "(seq.giveup " << m_nqs[0].l() << " = " << m_nqs[0].r() << " is unsolved)\n";);
-        return false;
-    }
+    // if (!m_eqs.empty()) {
+    //     TRACE("seq", tout << "(seq.giveup " << m_eqs[0].ls << " = " << m_eqs[0].rs << " is unsolved)\n";);
+    //     IF_VERBOSE(10, verbose_stream() << "(seq.giveup " << m_eqs[0].ls << " = " << m_eqs[0].rs << " is unsolved)\n";);
+    //     return false;
+    // }
+    // if (!m_nqs.empty()) {
+    //     TRACE("seq", tout << "(seq.giveup " << m_nqs[0].l() << " != " << m_nqs[0].r() << " is unsolved)\n";);
+    //     IF_VERBOSE(10, verbose_stream() << "(seq.giveup " << m_nqs[0].l() << " = " << m_nqs[0].r() << " is unsolved)\n";);
+    //     return false;
+    // }
 
     if (!m_ncs.empty()) {
         TRACE("seq", display_nc(tout << "(seq.giveup ", m_ncs[0]); tout << " is unsolved)\n";);
