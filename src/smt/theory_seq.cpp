@@ -373,7 +373,8 @@ void theory_seq::print_formulas(zstring msg){
     }
 }
 
-void theory_seq::handle_disequalities() {
+bool theory_seq::handle_disequalities() {
+    bool change = false;
     for (unsigned i=0; i<m_nqs.size(); i++) {
         ne &nq = m_nqs.ref(i);
         if (!m_nqids.contains(nq.m_id)) {
@@ -381,22 +382,24 @@ void theory_seq::handle_disequalities() {
             m_nqids.push_back(nq.m_id);
             
             // Case 1: len(lhs) != len(rhs)
-            literal case1 = mk_literal(m.mk_not(m_autil.mk_eq(m_util.str.mk_length(nq.l()), m_util.str.mk_length(nq.r()))));
+            literal case1 = mk_literal(m.mk_not(m_autil.mk_eq(mk_len(nq.l()), mk_len(nq.r()))));
 
             // Case 2: len(lhs) == len(rhs) but lhs == (prefix).(diff).(suffix) and rhs == (prefix).(diff').(suffix')
             // where (diff) != (diff') and len(diff) == len(diff') == 1.
             expr_ref_vector andv(m);
-            // andv.push_back(m_autil.mk_eq(m_util.str.mk_length(nq.l()), m_util.str.mk_length(nq.r())));
+            // andv.push_back(m_autil.mk_eq(mk_len(nq.l()), mk_len(nq.r())));
             andv.push_back(m.mk_eq(nq.l(), mk_concat(m_sk.mk_nq_prefix(nq.m_id), m_sk.mk_nq_diff_string(nq.m_id, LEFT_HAND_SIDE), m_sk.mk_nq_suffix(nq.m_id, LEFT_HAND_SIDE))));
             andv.push_back(m.mk_eq(nq.r(), mk_concat(m_sk.mk_nq_prefix(nq.m_id), m_sk.mk_nq_diff_string(nq.m_id, RIGHT_HAND_SIDE), m_sk.mk_nq_suffix(nq.m_id, RIGHT_HAND_SIDE))));
             andv.push_back(m.mk_not(m.mk_eq(m_sk.mk_nq_diff_string(nq.m_id, LEFT_HAND_SIDE), m_sk.mk_nq_diff_string(nq.m_id, RIGHT_HAND_SIDE))));
-            andv.push_back(m_autil.mk_eq(m_util.str.mk_length(m_sk.mk_nq_diff_string(nq.m_id, LEFT_HAND_SIDE)), m_util.str.mk_length(m_sk.mk_nq_diff_string(nq.m_id, RIGHT_HAND_SIDE))));
-            andv.push_back(m_autil.mk_eq(m_util.str.mk_length(m_sk.mk_nq_diff_string(nq.m_id, LEFT_HAND_SIDE)), m_autil.mk_int(1)));
+            andv.push_back(m_autil.mk_eq(mk_len(m_sk.mk_nq_diff_string(nq.m_id, LEFT_HAND_SIDE)), mk_len(m_sk.mk_nq_diff_string(nq.m_id, RIGHT_HAND_SIDE))));
+            andv.push_back(m_autil.mk_eq(mk_len(m_sk.mk_nq_diff_string(nq.m_id, LEFT_HAND_SIDE)), m_autil.mk_int(1)));
             literal case2 = mk_literal(m.mk_and(andv));
 
             add_axiom(case1, case2);
+            change = true;
         }
     }
+    return change;
 }
 
 bool theory_seq::atom_is_const_char(expr *const e, expr* &ch) {
@@ -449,7 +452,7 @@ void theory_seq::if_a_loop_is_taken_the_two_characters_on_its_label_should_be_eq
         expr_ref loop_i_j_gt_zero(m_autil.mk_ge(m_sk.mk_PFA_loop_counter(eqid, i, j), m_autil.mk_int(1)), m);
         expr_ref char_i_equals_char_j(m.mk_eq(FA_left.characters[i].get(), FA_right.characters[j].get()), m);
         add_axiom(~mk_literal(loop_i_j_gt_zero), mk_literal(char_i_equals_char_j));
-        FINALCHECK("if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal: \n" << mk_pp(m_sk.mk_PFA_loop_counter(eqid, i, j), m) << "> 0 ==> ";);
+        FINALCHECK("if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal: \n" << mk_pp(m_sk.mk_PFA_loop_counter(eqid, i, j), m) << " >= 1 ==> ";);
         FINALCHECK(mk_pp(FA_left.characters[i].get(), m) << " = " << mk_pp(FA_right.characters[j].get(), m)  << "\n";);
     }
 }
@@ -561,17 +564,18 @@ void theory_seq::length_of_string_variable_equals_sum_of_loop_length_multiplied_
             if (!atom_is_const_char(atom, ch)) {
                 expr_ref_vector loops(m);
                 for (int i=0; i<p; i++) {
-                    loops.push_back(m_autil.mk_mul(m_util.str.mk_length(m_sk.mk_FA_self_loop_string(atom, i)), m_sk.mk_FA_self_loop_counter(atom, i)));
+                    loops.push_back(m_autil.mk_mul(mk_len(m_sk.mk_FA_self_loop_string(atom, i)), m_sk.mk_FA_self_loop_counter(atom, i)));
                 }
                 expr_ref sum_loop(m_autil.mk_add(loops), m);
-                add_axiom(mk_literal(m.mk_eq(m_util.str.mk_length(atom), sum_loop.get())));
-                FINALCHECK(mk_pp(expr_ref(m.mk_eq(m_util.str.mk_length(atom), sum_loop.get()), m), m) << "\n";);
+                add_axiom(mk_literal(m.mk_eq(mk_len(atom), sum_loop.get())));
+                FINALCHECK(mk_pp(expr_ref(m.mk_eq(mk_len(atom), sum_loop.get()), m), m) << "\n";);
             }
         }
     }
 }
 
-void theory_seq::flatten_string_constraints(int size) {
+bool theory_seq::flatten_string_constraints(int size) {
+    bool change = false;
     for (const auto &eq: m_eqs) {
         if (!m_flattened_eqids.contains(eq.id())) {
             m_flattened_eqids.push_back(eq.id());
@@ -611,8 +615,11 @@ void theory_seq::flatten_string_constraints(int size) {
 
             // 7th: len(x) == sum_i { len(x_i) * times(x_i) }
             length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(eq, size);
+
+            change = true;
         }
     }
+    return change;
 }
 
 // TODO: do all const char exprs carrying the same character have the same pointer or id?
@@ -642,6 +649,9 @@ bool theory_seq::check_parikh_image() {
             m_eqids_pkh.push_back(eq.id());
             for (const auto &index_char: m_chars_pkh) {
                 expr_ref_vector index_char_occurrence_lhs(m), index_char_occurrence_rhs(m);
+                index_char_occurrence_lhs.push_back(m_autil.mk_int(0));
+                index_char_occurrence_rhs.push_back(m_autil.mk_int(0));
+
                 for (const auto &p: {std::make_pair(&index_char_occurrence_lhs, &(eq.ls)), std::make_pair(&index_char_occurrence_rhs, &(eq.rs))}) {
 
                     expr_ref_vector &index_char_occurrence = *(p.first);
@@ -654,6 +664,7 @@ bool theory_seq::check_parikh_image() {
                                 index_char_occurrence.push_back(m_autil.mk_int(1));
                             }
                         } else { // 'atom' is a string variable
+                            add_axiom(mk_literal(m_autil.mk_ge(m_sk.mk_parikh_image_counter(atom, index_char).get(), m_autil.mk_int(0))));
                             index_char_occurrence.push_back(m_sk.mk_parikh_image_counter(atom, index_char));
                         }
                     }
@@ -671,6 +682,20 @@ bool theory_seq::check_parikh_image() {
 void theory_seq::print_model(int size) {
     final_check_status arith_fc_status = m_arith_value.final_check();
     if (arith_fc_status == FC_DONE) {
+        for (const auto &eq: m_eqs) {
+            for (const auto &index_char: m_chars_pkh) {
+                for (const auto &word_term: {eq.ls, eq.rs}) {
+                    for (const auto &atom: word_term) {
+                        expr *atom_char;
+                        if (!atom_is_const_char(atom, atom_char)) {
+                            rational _val;
+                            get_num_value(m_sk.mk_parikh_image_counter(atom, index_char), _val);
+                            DISPLAYMODEL("m_sk.mk_parikh_image_counter(" << mk_pp(atom, m) << "," << mk_pp(index_char, m) << ") = " << _val << "\n";);
+                        }
+                    }
+                }
+            }
+        }
         for (const auto &eq: m_eqs) {
             for (const auto &term: {eq.ls, eq.rs}) {
                 for (const auto &atom: term) {
@@ -755,11 +780,11 @@ final_check_status theory_seq::final_check_eh() {
 //         TRACEFIN("zero_length");
 //         return FC_CONTINUE;
 //     }
-     if (get_fparams().m_split_w_len && len_based_split()) {
-         ++m_stats.m_branch_variable;
-         TRACEFIN("split_based_on_length");
-         return FC_CONTINUE;
-     }
+    if (get_fparams().m_split_w_len && len_based_split()) {
+        ++m_stats.m_branch_variable;
+        TRACEFIN("split_based_on_length");
+        return FC_CONTINUE;
+    }
 //    print_formulas("len_based_split");
 
 //     if (fixed_length()) {
@@ -822,11 +847,19 @@ final_check_status theory_seq::final_check_eh() {
 //         return FC_CONTINUE;
 //     }
 
-    handle_disequalities();
+    if (handle_disequalities()) {
+        TRACE("seq", tout << "handle_disequalities\n";);
+        return FC_CONTINUE;
+    }
 
-    flatten_string_constraints(7);
+    if (flatten_string_constraints(7)) {
+        TRACE("seq", tout << "flatten_string_constraints\n";);
+        return FC_CONTINUE;
+    }
 
+    std::cout << "=====================\n";
     // print_model(7);
+    std::cout << "=====================\n";
 
     if (m_unhandled_expr) {
         TRACEFIN("give_up");

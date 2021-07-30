@@ -497,8 +497,8 @@ namespace smt {
         bool is_under_approximation;
         void print_formulas(zstring msg);
         void block_curr_assignment();
-        void handle_disequalities();
-        void flatten_string_constraints(int size);
+        bool handle_disequalities();
+        bool flatten_string_constraints(int size);
         void print_model(int size);
         bool check_parikh_image();       // propagate check_parikh_image equalities
         bool simplify_and_solve_eqs();   // solve unitary equalities
