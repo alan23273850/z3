@@ -749,10 +749,10 @@ final_check_status theory_seq::final_check_eh() {
 
 
 
-    if (check_parikh_image()) {
-        TRACE("seq", tout << "check_parikh_image\n";);
-        return FC_CONTINUE;
-    }
+    // if (check_parikh_image()) {
+    //     TRACE("seq", tout << "check_parikh_image\n";);
+    //     return FC_CONTINUE;
+    // }
 //    print_formulas("check_parikh_image");
 
 //     if (simplify_and_solve_eqs()) {
@@ -780,11 +780,11 @@ final_check_status theory_seq::final_check_eh() {
 //         TRACEFIN("zero_length");
 //         return FC_CONTINUE;
 //     }
-    if (get_fparams().m_split_w_len && len_based_split()) {
-        ++m_stats.m_branch_variable;
-        TRACEFIN("split_based_on_length");
-        return FC_CONTINUE;
-    }
+    // if (get_fparams().m_split_w_len && len_based_split()) {
+    //     ++m_stats.m_branch_variable;
+    //     TRACEFIN("split_based_on_length");
+    //     return FC_CONTINUE;
+    // }
 //    print_formulas("len_based_split");
 
 //     if (fixed_length()) {
@@ -814,10 +814,10 @@ final_check_status theory_seq::final_check_eh() {
 //     }
 
 
-    if (branch_variable_mb()) {
-        TRACE("seq", tout << "branch_variable_mb\n";);
-        return FC_CONTINUE;
-    }
+    // if (branch_variable_mb()) {
+    //     TRACE("seq", tout << "branch_variable_mb\n";);
+    //     return FC_CONTINUE;
+    // }
 
 //    print_formulas("branch_variable_mb");
 
@@ -858,7 +858,7 @@ final_check_status theory_seq::final_check_eh() {
     }
 
     std::cout << "=====================\n";
-    // print_model(7);
+    print_model(7);
     std::cout << "=====================\n";
 
     if (m_unhandled_expr) {
