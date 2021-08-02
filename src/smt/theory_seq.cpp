@@ -357,6 +357,9 @@ void theory_seq::print_formulas(zstring msg){
     for (auto const& eq:m_eqs) {
         FINALCHECK(eq.ls << " = " <<eq.rs <<"\n";);
     }
+    for (auto const& eq:m_rep) {
+        if(eq.v && eq.v->get_sort()==m_util.mk_string_sort()) FINALCHECK(mk_pp(eq.e,m) << " = " <<mk_pp(eq.v,m) <<"\n";);
+    }
     FINALCHECK("Word Disequalities:\n";);
     for (auto const& dis:m_nqs) {
         FINALCHECK(dis.l() << " != " <<dis.r() <<"\n";);
