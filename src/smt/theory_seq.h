@@ -445,6 +445,7 @@ namespace smt {
         };
         enum {
             EQ,
+            REP,
             DISEQ_LHS,
             DISEQ_RHS
         };
@@ -490,22 +491,24 @@ namespace smt {
             }
         };
 
-        expr_ref mk_parikh_image_counter(expr *var, unsigned ch);
-        expr_ref mk_FA_self_loop_char(expr *var, unsigned i);
-        expr_ref mk_FA_self_loop_counter(expr *var, unsigned i);
-        expr_ref mk_PFA_loop_counter(int id1, int id2, unsigned i, unsigned j);
-
-        void add_from_FA_to_PFA_constraints(int id1, int id2, const expr_ref_vector &term, int size);
+        expr_ref mk_parikh_image_counter(expr *var, int ch);
+        expr_ref mk_FA_self_loop_char(expr *var, int i);
+        expr_ref mk_FA_self_loop_counter(expr *var, int i);
+        template <typename T> expr_ref mk_PFA_loop_counter(int type, T id, int i, int j);
+        expr_ref mk_nq_char(const std::pair<int, int> nqid, int part, int i);
+        expr_ref mk_nq_counter(const std::pair<int, int> nqid, int part, int i);
+        template <typename T> void add_from_FA_to_PFA_constraints(int type, T id, const expr_ref_vector &term, int size);
 
         struct FA FA_left, FA_right;
         bool can_be_a_valid_sync_loop(unsigned i, unsigned j);
         void from_word_term_to_FA(const expr_ref_vector &term, int p, struct FA &FA);
-        void if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(int id1, int id2, int i, int j);
-        void only_at_most_one_incoming_edge_of_one_state_can_be_selected(int id1, int id2, int i, int j);
-        void only_at_most_one_outgoing_edge_of_one_state_can_be_selected(int id1, int id2, unsigned i, unsigned j);
-        void selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(int id1, int id2, unsigned i, unsigned j);
-        void at_least_one_incoming_edge_of_final_state_should_be_selected(int id1, int id2);
-        void sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(int id1, int id2);
+        void from_nq_bridge_to_FA(int type, const std::pair<int, int> &nqid, int p, struct FA &FA);
+        template <typename T> void if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(int type, T id, unsigned i, unsigned j);
+        template <typename T> void only_at_most_one_incoming_edge_of_one_state_can_be_selected(int type, T id, unsigned i, unsigned j);
+        template <typename T> void only_at_most_one_outgoing_edge_of_one_state_can_be_selected(int type, T id, unsigned i, unsigned j);
+        template <typename T> void selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(int type, T id, unsigned i, unsigned j);
+        template <typename T> void at_least_one_incoming_edge_of_final_state_should_be_selected(int type, T id);
+        template <typename T> void sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(int type, T id);
         void length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const expr_ref_vector &term, int p);
         /***************************************************************************************************/
 
@@ -513,8 +516,6 @@ namespace smt {
         bool is_under_approximation;
         void print_formulas(zstring msg);
         void print_terms(const expr_ref_vector& terms);
-
-
 
         void block_curr_assignment();
         bool handle_disequalities(int size);
