@@ -10,7 +10,7 @@ argparse.RawTextHelpFormatter._split_lines = lambda *args, **kwargs: f(*args, **
 parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
 
 # positional arguments
-parser.add_argument("mode", metavar="mode", help="1->small, 2->large")
+parser.add_argument("mode", metavar="mode", help="1->small, 2->large, 3->random, 4->debug")
 parser.add_argument("message", metavar="message", help="usually a commit id")
 args = parser.parse_args()
 

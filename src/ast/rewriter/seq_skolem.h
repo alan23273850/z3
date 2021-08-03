@@ -98,14 +98,16 @@ namespace seq {
         expr_ref mk_max_unfolding_depth(unsigned d);
         expr_ref mk_length_limit(expr* e, unsigned d);
 
-        expr_ref mk_parikh_image_counter(expr *var, expr *ch);
-        expr_ref mk_FA_self_loop_string(expr *var, unsigned i);
-        expr_ref mk_FA_self_loop_counter(expr *var, unsigned i);
-        expr_ref mk_PFA_loop_counter(int type, int id, unsigned i, unsigned j);
-        expr_ref mk_PFA_loop_counter(int type, const std::pair<int, int> id, unsigned i, unsigned j);
+        expr_ref mk_parikh_image_counter(expr *var, int ch);
+        expr_ref mk_FA_self_loop_char(expr *var, int i);
+        expr_ref mk_FA_self_loop_counter(expr *var, int i);
+        expr_ref mk_PFA_loop_counter(int type, int id, int i, int j);
+        expr_ref mk_PFA_loop_counter(int type, const std::pair<int, int> &id, int i, int j);
         expr_ref mk_PFA_edge_selection(int type, int id, const std::pair<int, int> &state1, const std::pair<int, int> &state2);
-        expr_ref mk_PFA_edge_selection(int type, const std::pair<int, int> id, const std::pair<int, int> &state1, const std::pair<int, int> &state2);
-        
+        expr_ref mk_PFA_edge_selection(int type, const std::pair<int, int> &id, const std::pair<int, int> &state1, const std::pair<int, int> &state2);
+        expr_ref mk_nq_char(const std::pair<int, int> &id, int part, int i);
+        expr_ref mk_nq_counter(const std::pair<int, int> &id, int part, int i);
+
         bool is_skolem(symbol const& s, expr const* e) const;
         bool is_skolem(expr const* e) const { return seq.is_skolem(e); }
 
