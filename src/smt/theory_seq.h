@@ -343,11 +343,11 @@ namespace smt {
         dependency_manager         m_dm;
         solution_map               m_rep;        // unification representative.
         scoped_vector<depeq>       m_eqs;        // set of current equations.
-        scoped_vector<unsigned>    m_eqids_pkh;  // set of current equations not processed by check_parikh_image
-        scoped_vector<expr*>       m_chars_pkh;  // set of characters to be used by check_parikh_image
-        scoped_vector<unsigned>    m_nqids;      // set of current word disequality ids not processed yet
-        scoped_vector<unsigned>    m_flattened_eqids;  // set of flatterned word equation ids
-        scoped_vector<std::pair<unsigned, unsigned>> m_repids;  // set of flattened word equation ids
+        scoped_vector<int>         m_eqids_pkh;  // set of current equations not processed by check_parikh_image
+        scoped_vector<int>         m_chars_pkh;  // set of characters to be used by check_parikh_image
+        scoped_vector<std::pair<int, int>> m_nqids;   // set of current word disequality ids not processed yet
+        scoped_vector<int>         m_flattened_eqids;  // set of flatterned word equation ids
+        scoped_vector<std::pair<int, int>> m_repids;  // set of flattened word equation ids
         scoped_vector<ne>          m_nqs;        // set of current disequalities.
         scoped_vector<nc>          m_ncs;        // set of non-contains constraints.
         scoped_vector<rc>          m_rcs;        // set of regular expression constraints.
@@ -444,8 +444,19 @@ namespace smt {
         // formula types
         enum formula_types {
             EQ,
-            REP
+            REP,
+            DISEQ_LHS,
+            DISEQ_RHS
         };
+        enum nq_bridge_parts {
+            PREFIX,
+            DIFF_LHS,
+            SUFFIX_LHS,
+            DIFF_RHS,
+            SUFFIX_RHS
+        };
+
+        int atom_is_const_char_unicode(expr *const e);
 
         // flatten_equalities
         enum PFA_direction {
@@ -478,27 +489,33 @@ namespace smt {
             }
         };
 
-        expr_ref mk_parikh_image_counter(expr *var, expr *ch);
-        expr_ref mk_FA_self_loop_counter(expr *var, unsigned i);
-        template <typename T> expr_ref mk_PFA_loop_counter(int type, T id, unsigned i, unsigned j);
+        expr_ref mk_parikh_image_counter(expr *var, int ch);
+        expr_ref mk_FA_self_loop_char(expr *var, int i);
+        expr_ref mk_FA_self_loop_counter(expr *var, int i);
+        template <typename T> expr_ref mk_PFA_loop_counter(int type, const T &id, int i, int j);
+        expr_ref mk_nq_char(const std::pair<int, int> &id, int part, int i);
+        expr_ref mk_nq_counter(const std::pair<int, int> &id, int part, int i);
 
         struct FA FA_left, FA_right;
         bool atom_is_const_char(expr *const e, expr* &ch);
-        bool can_be_a_valid_sync_loop(unsigned i, unsigned j);
+        bool can_be_a_valid_sync_loop(int i, int j);
         void from_word_term_to_FA(const expr_ref_vector &term, int p, struct FA &FA);
-        template <typename T> void if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(int type, T id, int i, int j);
-        template <typename T> void if_a_loop_is_taken_then_its_counter_should_be_nonnegative(int type, T id, int i, int j);
-        template <typename T> void only_at_most_one_incoming_edge_of_one_state_can_be_selected(int type, T id, int i, int j);
-        template <typename T> void only_at_most_one_outgoing_edge_of_one_state_can_be_selected(int type, T id, unsigned i, unsigned j);
-        template <typename T> void selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(int type, T id, unsigned i, unsigned j);
-        template <typename T> void at_least_one_incoming_edge_of_final_state_should_be_selected(int type, T id);
-        template <typename T> void sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(int type, T id);
+        void from_nq_bridge_to_FA(const std::pair<int, int> &id, int mode, int p, struct FA &FA);
+        template <typename T> void if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(int type, const T &id, int i, int j);
+        template <typename T> void if_a_loop_is_taken_then_its_counter_should_be_nonnegative(int type, const T &id, int i, int j);
+        template <typename T> void only_at_most_one_incoming_edge_of_one_state_can_be_selected(int type, const T &id, int i, int j);
+        template <typename T> void only_at_most_one_outgoing_edge_of_one_state_can_be_selected(int type, const T &id, int i, int j);
+        template <typename T> void selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(int type, const T &id, int i, int j);
+        template <typename T> void at_least_one_incoming_edge_of_final_state_should_be_selected(int type, const T &id);
+        template <typename T> void sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(int type, const T &id);
         void length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const expr_ref_vector &term, int p);
         /***************************************************************************************************/
 
         // final check 
         void block_curr_assignment();
+        bool handle_disequalities(int size);
         bool flatten_equalities(int size);
+        void print_model(int size);
         bool check_parikh_image();       // propagate check_parikh_image equalities
         bool simplify_and_solve_eqs();   // solve unitary equalities
         bool reduce_length_eq();
