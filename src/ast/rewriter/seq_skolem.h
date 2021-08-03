@@ -98,15 +98,13 @@ namespace seq {
         expr_ref mk_max_unfolding_depth(unsigned d);
         expr_ref mk_length_limit(expr* e, unsigned d);
 
-        expr_ref mk_nq_prefix(unsigned nqid);
-        expr_ref mk_nq_diff_string(unsigned nqid, int side);
-        expr_ref mk_nq_suffix(unsigned nqid, int side);
-
-        expr_ref mk_parikh_image_counter(expr *var, expr *ch);
-        expr_ref mk_FA_self_loop_string(expr *var, unsigned i);
+        expr_ref mk_parikh_image_counter(expr *var, unsigned ch);
+        expr_ref mk_FA_self_loop_char(expr *var, unsigned i);
         expr_ref mk_FA_self_loop_counter(expr *var, unsigned i);
-        expr_ref mk_PFA_loop_counter(unsigned eqid, unsigned i, unsigned j);
-        expr_ref mk_PFA_edge_selection(unsigned eqid, const std::pair<int, int> &state1, const std::pair<int, int> &state2);
+        expr_ref mk_PFA_loop_counter(int mode, unsigned qid, unsigned i, unsigned j);
+        expr_ref mk_PFA_edge_selection(int mode, unsigned qid, const std::pair<int, int> &state1, const std::pair<int, int> &state2);
+        expr_ref mk_nq_char(unsigned nqid, int part, int i);
+        expr_ref mk_nq_counter(unsigned nqid, int part, int i);
         
         bool is_skolem(symbol const& s, expr const* e) const;
         bool is_skolem(expr const* e) const { return seq.is_skolem(e); }

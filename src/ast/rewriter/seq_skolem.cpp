@@ -201,34 +201,16 @@ expr_ref skolem::mk_step(expr* s, expr* idx, expr* re, unsigned i, unsigned j, e
     return expr_ref(seq.mk_skolem(m_aut_step, args.size(), args.data(), m.mk_bool_sort()), m);
 }
 
-expr_ref skolem::mk_nq_prefix(unsigned nqid) {
-    return expr_ref(seq.mk_skolem(symbol("seq.nq_prefix"), 1,
-        std::initializer_list<expr*>({a.mk_int(nqid)}).begin(),
-        seq.mk_string_sort()), m);
-}
-
-expr_ref skolem::mk_nq_diff_string(unsigned nqid, int side) {
-    return expr_ref(seq.mk_skolem(symbol("seq.nq_diff_string"), 2,
-        std::initializer_list<expr*>({a.mk_int(nqid), a.mk_int(side)}).begin(),
-        seq.mk_string_sort()), m);
-}
-
-expr_ref skolem::mk_nq_suffix(unsigned nqid, int side) {
-    return expr_ref(seq.mk_skolem(symbol("seq.nq_suffix"), 2,
-        std::initializer_list<expr*>({a.mk_int(nqid), a.mk_int(side)}).begin(),
-        seq.mk_string_sort()), m);
-}
-
-expr_ref skolem::mk_parikh_image_counter(expr *var, expr *ch) {
+expr_ref skolem::mk_parikh_image_counter(expr *var, unsigned ch) {
     return expr_ref(seq.mk_skolem(symbol("seq.parikh_image_counter"), 2,
-        std::initializer_list<expr*>({var, ch}).begin(),
+        std::initializer_list<expr*>({var, a.mk_int(ch)}).begin(),
         a.mk_int()), m);
 }
 
-expr_ref skolem::mk_FA_self_loop_string(expr *var, unsigned i) {
-     return expr_ref(seq.mk_skolem(symbol("seq.fa_self_loop_string"), 2,
+expr_ref skolem::mk_FA_self_loop_char(expr *var, unsigned i) {
+     return expr_ref(seq.mk_skolem(symbol("seq.fa_self_loop_char"), 2,
         std::initializer_list<expr*>({var, a.mk_int(i)}).begin(),
-        seq.mk_string_sort()), m);
+        a.mk_int()), m); //seq.mk_string_sort()), m);
 }
 
 expr_ref skolem::mk_FA_self_loop_counter(expr *var, unsigned i) {
@@ -237,14 +219,26 @@ expr_ref skolem::mk_FA_self_loop_counter(expr *var, unsigned i) {
         a.mk_int()), m);
 }
 
-expr_ref skolem::mk_PFA_loop_counter(unsigned eqid, unsigned i, unsigned j) {
-    return expr_ref(seq.mk_skolem(symbol("seq.pfa_loop_counter"), 3,
-        std::initializer_list<expr*>({a.mk_int(eqid), a.mk_int(i), a.mk_int(j)}).begin(),
+expr_ref skolem::mk_PFA_loop_counter(int mode, unsigned qid, unsigned i, unsigned j) {
+    return expr_ref(seq.mk_skolem(symbol("seq.pfa_loop_counter"), 4,
+        std::initializer_list<expr*>({a.mk_int(mode), a.mk_int(qid), a.mk_int(i), a.mk_int(j)}).begin(),
         a.mk_int()), m);
 }
 
-expr_ref skolem::mk_PFA_edge_selection(unsigned eqid, const std::pair<int, int> &state1, const std::pair<int, int> &state2) {
-    return expr_ref(seq.mk_skolem(symbol("seq.pfa_edge_selection"), 5,
-        std::initializer_list<expr*>({a.mk_int(eqid), a.mk_int(state1.first), a.mk_int(state1.second), a.mk_int(state2.first), a.mk_int(state2.second)}).begin(),
+expr_ref skolem::mk_PFA_edge_selection(int mode, unsigned qid, const std::pair<int, int> &state1, const std::pair<int, int> &state2) {
+    return expr_ref(seq.mk_skolem(symbol("seq.pfa_edge_selection"), 6,
+        std::initializer_list<expr*>({a.mk_int(mode), a.mk_int(qid), a.mk_int(state1.first), a.mk_int(state1.second), a.mk_int(state2.first), a.mk_int(state2.second)}).begin(),
         m.mk_bool_sort()), m);
+}
+
+expr_ref skolem::mk_nq_char(unsigned nqid, int part, int i) {
+    return expr_ref(seq.mk_skolem(symbol("seq.nq_char"), 3,
+        std::initializer_list<expr*>({a.mk_int(nqid), a.mk_int(part), a.mk_int(i)}).begin(),
+        a.mk_int()), m);
+}
+
+expr_ref skolem::mk_nq_counter(unsigned nqid, int part, int i) {
+    return expr_ref(seq.mk_skolem(symbol("seq.nq_counter"), 3,
+        std::initializer_list<expr*>({a.mk_int(nqid), a.mk_int(part), a.mk_int(i)}).begin(),
+        a.mk_int()), m);
 }

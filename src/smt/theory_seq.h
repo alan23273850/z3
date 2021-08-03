@@ -346,9 +346,10 @@ namespace smt {
         solution_map               m_rep;        // unification representative.
         scoped_vector<depeq>       m_eqs;        // set of current equations.
         scoped_vector<unsigned>    m_eqids_pkh;  // set of current equations not processed by check_parikh_image
-        scoped_vector<expr*>       m_chars_pkh;  // set of characters to be used by check_parikh_image
+        scoped_vector<unsigned>    m_chars_pkh;  // set of characters to be used by check_parikh_image
         scoped_vector<unsigned>    m_nqids;      // set of current word disequality ids not processed yet
         scoped_vector<unsigned>    m_flattened_eqids;  // set of flattened word equation ids
+        scoped_vector<std::pair<unsigned, unsigned>> m_eqpairs;  // set of flattened word equation ids
         scoped_vector<ne>          m_nqs;        // set of current disequalities.
         scoped_vector<nc>          m_ncs;        // set of non-contains constraints.
         scoped_vector<rc>          m_rcs;        // set of regular experssion constraints.
@@ -445,10 +446,22 @@ namespace smt {
             LEFT_HAND_SIDE,
             RIGHT_HAND_SIDE
         };
+        enum {
+            EQ,
+            DISEQ_LHS,
+            DISEQ_RHS
+        };
+        enum {
+            PREFIX,
+            DIFF_LHS,
+            SUFFIX_LHS,
+            DIFF_RHS,
+            SUFFIX_RHS
+        };
 
-        bool atom_is_const_char(expr *const e, expr* &ch);
+        int atom_is_const_char_unicode(expr *const e);
 
-        // flatten_string_constraints
+        // flatten_equalities
         enum PFA_direction {
             LEFT_LOOP_RIGHT_LOOP,
             LEFT_NEXT_RIGHT_LOOP,
@@ -479,26 +492,33 @@ namespace smt {
             }
         };
 
+        expr_ref mk_parikh_image_counter(expr *var, unsigned ch);
+        expr_ref mk_FA_self_loop_char(expr *var, unsigned i);
+        expr_ref mk_FA_self_loop_counter(expr *var, unsigned i);
+        expr_ref mk_PFA_loop_counter(int mode, unsigned qid, unsigned i, unsigned j);
+        expr_ref mk_PFA_edge_selection(int mode, unsigned qid, const std::pair<int, int> &state1, const std::pair<int, int> &state2);
+        expr_ref mk_nq_char(unsigned nqid, int part, int i);
+        expr_ref mk_nq_counter(unsigned nqid, int part, int i);
 
         struct FA FA_left, FA_right;
         bool can_be_a_valid_sync_loop(unsigned i, unsigned j);
-        void from_word_term_to_FA(const expr_ref_vector &term, struct FA &FA, int p);
-        void if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(unsigned eqid, int i, int j);
-        void if_a_loop_is_taken_then_its_counter_should_be_nonnegative(unsigned eqid, int i, int j);
-        void only_at_most_one_incoming_edge_of_one_state_can_be_selected(unsigned eqid, int i, int j);
-        void only_at_most_one_outgoing_edge_of_one_state_can_be_selected(unsigned eqid, unsigned i, unsigned j);
-        void selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(unsigned eqid, unsigned i, unsigned j);
-        void at_least_one_incoming_edge_of_final_state_should_be_selected(unsigned eqid);
-        void sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(unsigned eqid);
-        void length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const depeq &eq, int p);
+        void from_word_term_to_FA(const expr_ref_vector &term, int p, struct FA &FA);
+        void from_nq_bridge_to_FA(int nqid, int mode, int p, struct FA &FA);
+        void if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(int mode, unsigned qid, int i, int j);
+        void only_at_most_one_incoming_edge_of_one_state_can_be_selected(int mode, unsigned qid, int i, int j);
+        void only_at_most_one_outgoing_edge_of_one_state_can_be_selected(int mode, unsigned qid, unsigned i, unsigned j);
+        void selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(int mode, unsigned qid, unsigned i, unsigned j);
+        void at_least_one_incoming_edge_of_final_state_should_be_selected(int mode, unsigned qid);
+        void sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(int mode, unsigned qid);
+        void length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const expr_ref_vector &term, int p);
         /***************************************************************************************************/
 
         // final check 
         bool is_under_approximation;
         void print_formulas(zstring msg);
         void block_curr_assignment();
-        bool handle_disequalities();
-        bool flatten_string_constraints(int size);
+        bool handle_disequalities(int size);
+        bool flatten_equalities(int size);
         void print_model(int size);
         bool check_parikh_image();       // propagate check_parikh_image equalities
         bool simplify_and_solve_eqs();   // solve unitary equalities
