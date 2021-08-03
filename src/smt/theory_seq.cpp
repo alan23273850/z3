@@ -454,10 +454,16 @@ bool theory_seq::handle_disequalities(int size) {
             length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(rhs, size);
             /***************************************************************************************/
 
-            /************************************ diff character ***********************************/
-            add_axiom(mk_literal(m.mk_not(m_autil.mk_eq(mk_nq_char(id_pair, DIFF_LHS, 0), mk_nq_char(id_pair, DIFF_RHS, 0)))));
-            FINALCHECK("diff_string_on_both_sides_of_an_nq_should_be_different:\n";);
-            FINALCHECK(mk_pp(expr_ref(m.mk_not(m_autil.mk_eq(mk_nq_char(id_pair, DIFF_LHS, 0), mk_nq_char(id_pair, DIFF_RHS, 0))), m), m) << "\n";);
+            /**************************** diff length or diff character ****************************/
+            add_axiom(mk_literal(m.mk_not(m_autil.mk_eq(mk_len(nq.l()), mk_len(nq.r())))),
+                      mk_literal(m.mk_and(m_autil.mk_eq(mk_nq_counter(id_pair, DIFF_LHS, 0), m_autil.mk_int(1)),
+                                          m_autil.mk_eq(mk_nq_counter(id_pair, DIFF_RHS, 0), m_autil.mk_int(1)),
+                                          m.mk_not(m_autil.mk_eq(mk_nq_char(id_pair, DIFF_LHS, 0), mk_nq_char(id_pair, DIFF_RHS, 0))))));
+            FINALCHECK("diff_length_or_diff_character:\n";);
+            FINALCHECK(mk_pp(expr_ref(m.mk_not(m_autil.mk_eq(mk_len(nq.l()), mk_len(nq.r()))), m), m) << " or "
+                    << mk_pp(expr_ref(m.mk_and(m_autil.mk_eq(mk_nq_counter(id_pair, DIFF_LHS, 0), mk_nq_counter(id_pair, DIFF_RHS, 0)),
+                                               m_autil.mk_eq(mk_nq_counter(id_pair, DIFF_LHS, 0), m_autil.mk_int(1)),
+                                               m.mk_not(m_autil.mk_eq(mk_nq_char(id_pair, DIFF_LHS, 0), mk_nq_char(id_pair, DIFF_RHS, 0)))), m), m) << "\n";);
             /***************************************************************************************/
             change = true;
         }
@@ -510,17 +516,24 @@ void theory_seq::from_word_term_to_FA(const expr_ref_vector &term, int p, struct
             }
         }
     }
+    if (!FA.size()) {
+        FA.characters.push_back(m_autil.mk_int(0));
+        FA.counters.push_back(m_autil.mk_int(0));
+    }
 }
 
 void theory_seq::from_nq_bridge_to_FA(const std::pair<int, int> &id, int mode, int p, struct FA &FA) {
     int index[][3] = {{PREFIX, DIFF_LHS, SUFFIX_LHS}, {PREFIX, DIFF_RHS, SUFFIX_RHS}};
-    FA.clear(); mode--;
+    FA.clear();
+    if (mode == DISEQ_LHS) mode = 0;
+    else if (mode == DISEQ_RHS) mode = 1;
+    else SASSERT(false);
     for (int i=0; i<p; i++) {
         FA.characters.push_back(mk_nq_char(id, index[mode][0], i));
         FA.counters.push_back(mk_nq_counter(id, index[mode][0], i));
     }
     FA.characters.push_back(mk_nq_char(id, index[mode][1], 0));
-    FA.counters.push_back(m_autil.mk_int(1));
+    FA.counters.push_back(mk_nq_counter(id, index[mode][1], 0));
     for (int i=0; i<p; i++) {
         FA.characters.push_back(mk_nq_char(id, index[mode][2], i));
         FA.counters.push_back(mk_nq_counter(id, index[mode][2], i));
@@ -617,6 +630,9 @@ void theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_t
             if (can_be_a_valid_sync_loop(i, j))
                 loops.push_back(mk_PFA_loop_counter(type, id, i, j));
         }
+        expr_ref sum_loop(m_autil.mk_add(loops), m);
+        add_axiom(mk_literal(m_autil.mk_eq(sum_loop, FA_left.counters[i].get())));
+        FINALCHECK(mk_pp(expr_ref(m_autil.mk_eq(sum_loop, FA_left.counters[i].get()), m), m) << "\n";);
     }
     for (unsigned j=0; j<FA_right.size(); j++) {
         expr_ref_vector loops(m);
@@ -625,8 +641,8 @@ void theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_t
                 loops.push_back(mk_PFA_loop_counter(type, id, i, j));
         }
         expr_ref sum_loop(m_autil.mk_add(loops), m);
-        add_axiom(mk_literal(m.mk_eq(sum_loop, FA_right.counters[j].get())));
-        FINALCHECK(mk_pp(expr_ref(m.mk_eq(sum_loop, FA_right.counters[j].get()), m), m) << "\n";);
+        add_axiom(mk_literal(m_autil.mk_eq(sum_loop, FA_right.counters[j].get())));
+        FINALCHECK(mk_pp(expr_ref(m_autil.mk_eq(sum_loop, FA_right.counters[j].get()), m), m) << "\n";);
     }
 }
 
@@ -878,7 +894,7 @@ final_check_status theory_seq::final_check_eh() {
             for (const auto &t: {nq.l(), nq.r()}) {
                 DISPLAYMODEL((!mode ? "LHS: " : "RHS: "););// << mk_pp(t, m) << " == ";);
                 expr_ref_vector term(m);
-                m_util.str.get_concat(t.get(), term);
+                m_util.str.get_concat(t, term);
                 for (const auto &atom: term) {
                     int ch;
                     if ((ch = atom_is_const_char_unicode(atom)) < 0) {
@@ -923,7 +939,7 @@ final_check_status theory_seq::final_check_eh() {
             DISPLAYMODEL("=====================\n";);
             // for (const auto &t: {nq.l(), nq.r()}) {
             //     expr_ref_vector term(m);
-            //     m_util.str.get_concat(t.get(), term);
+            //     m_util.str.get_concat(t, term);
             //     for (const auto &atom: term) {
             //         if (atom_is_const_char_unicode(atom) < 0) {
             //             rational _counter, _unicode;
