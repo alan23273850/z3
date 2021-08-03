@@ -471,10 +471,16 @@ bool theory_seq::handle_disequalities(int size) {
             add_from_FA_to_PFA_constraints(DISEQ_RHS, id_pair, rhs, size);
             /***************************************************************************************/
 
-            /************************************ diff character ***********************************/
-            add_axiom(mk_literal(m.mk_not(m_autil.mk_eq(mk_nq_char(id_pair, DIFF_LHS, 0), mk_nq_char(id_pair, DIFF_RHS, 0)))));
-            DEBUG("fc_verbose", "diff_string_on_both_sides_of_an_nq_should_be_different:\n";);
-            DEBUG("fc_verbose", mk_pp(expr_ref(m.mk_not(m_autil.mk_eq(mk_nq_char(id_pair, DIFF_LHS, 0), mk_nq_char(id_pair, DIFF_RHS, 0))), m).get(), m) << "\n";);
+            /**************************** diff length or diff character ****************************/
+            add_axiom(mk_literal(m.mk_not(m_autil.mk_eq(mk_len(nq.l()), mk_len(nq.r())))),
+                      mk_literal(m.mk_and(m_autil.mk_eq(mk_nq_counter(id_pair, DIFF_LHS, 0), mk_nq_counter(id_pair, DIFF_RHS, 0)),
+                                          m_autil.mk_eq(mk_nq_counter(id_pair, DIFF_LHS, 0), m_autil.mk_int(1)),
+                                          m.mk_not(m_autil.mk_eq(mk_nq_char(id_pair, DIFF_LHS, 0), mk_nq_char(id_pair, DIFF_RHS, 0))))));
+            DEBUG("fc_verbose", "diff_length_or_diff_character:\n";);
+            DEBUG("fc_verbose", mk_pp(expr_ref(m.mk_not(m_autil.mk_eq(mk_len(nq.l()), mk_len(nq.r()))), m), m) << " or "
+                             << mk_pp(expr_ref(m.mk_and(m_autil.mk_eq(mk_nq_counter(id_pair, DIFF_LHS, 0), mk_nq_counter(id_pair, DIFF_RHS, 0)),
+                                               m_autil.mk_eq(mk_nq_counter(id_pair, DIFF_LHS, 0), m_autil.mk_int(1)),
+                                               m.mk_not(m_autil.mk_eq(mk_nq_char(id_pair, DIFF_LHS, 0), mk_nq_char(id_pair, DIFF_RHS, 0)))), m), m) << "\n";);
             /***************************************************************************************/
             change = true;
         }
@@ -592,7 +598,7 @@ void theory_seq::from_nq_bridge_to_FA(int type, const std::pair<int, int> &nqid,
         FA.counters.push_back(mk_nq_counter(nqid, index[type][0], i));
     }
     FA.characters.push_back(mk_nq_char(nqid, index[type][1], 0));
-    FA.counters.push_back(m_autil.mk_int(1));
+    FA.counters.push_back(mk_nq_counter(nqid, index[type][1], 0));
     for (int i=0; i<p; i++) {
         FA.characters.push_back(mk_nq_char(nqid, index[type][2], i));
         FA.counters.push_back(mk_nq_counter(nqid, index[type][2], i));
