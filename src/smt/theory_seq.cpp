@@ -377,33 +377,65 @@ void theory_seq::block_curr_assignment() {
     FINALCHECK(__LINE__ << " leave " << __FUNCTION__ << std::endl;)
 }
 
+void theory_seq::print_terms(const expr_ref_vector& terms){
+    bool first =true;
+    for(auto const& term :terms) {
+        if(first) first = false; else FINALCHECK(".";);
+        FINALCHECK(mk_pp(term,m););
+    }
+}
+
+
 void theory_seq::print_formulas(zstring msg){
     FINALCHECK(msg <<" \n";);
 
-    FINALCHECK("Word Equations:\n";);
+    if(!m_eqs.empty() || !m_rep.empty()) FINALCHECK("Word Equations:\n";);
     for (auto const& eq:m_eqs) {
-        FINALCHECK(eq.ls << " = " <<eq.rs <<"\n";);
+        print_terms(eq.ls);
+        FINALCHECK(" = ";);
+        print_terms(eq.rs);
+        FINALCHECK("\n";);
     }
     for (auto const& eq:m_rep) {
-        if(eq.v && eq.v->get_sort()==m_util.mk_string_sort()) FINALCHECK(mk_pp(eq.e,m) << " = " <<mk_pp(eq.v,m) <<"\n";);
-    }
-    FINALCHECK("Word Disequalities:\n";);
-    for (auto const& dis:m_nqs) {
-        FINALCHECK(dis.l() << " != " <<dis.r() <<"\n";);
+        if(eq.v && eq.v->get_sort()==m_util.mk_string_sort()) {
+            expr_ref_vector terms(m);
+            m_util.str.get_concat_units(eq.e, terms);
+            print_terms(terms);
+            FINALCHECK(" = ";);
+            terms.reset();
+            m_util.str.get_concat_units(eq.v, terms);
+            print_terms(terms);
+            FINALCHECK("\n";);
+        }
     }
 
-    FINALCHECK("Not Contains:\n";);
+    if(!m_nqs.empty()) FINALCHECK("Word Disequalities:\n";);
+    for (auto const& dis:m_nqs) {
+        expr_ref_vector terms(m);
+        m_util.str.get_concat_units(dis.l(), terms);
+        print_terms(terms);
+        FINALCHECK(" != ";);
+        terms.reset();
+        m_util.str.get_concat_units(dis.r(), terms);
+        print_terms(terms);
+        FINALCHECK("\n";);
+    }
+
+    if(!m_ncs.empty()) FINALCHECK("Not Contains:\n";);
     for (auto const & nc:m_ncs){
         FINALCHECK("not " << mk_bounded_pp(nc.contains(), m, 2)<<"\n";);
     }
 
-    FINALCHECK("Regular Constraints:\n";);
+    if(!m_rcs.empty()) FINALCHECK("Regular Constraints:\n";);
     for (auto const & rc:m_rcs){
         FINALCHECK(rc.term() << " in " <<rc.re() <<"\n";);
     }
+
+    FINALCHECK("\n";);
 }
 
 bool theory_seq::handle_disequalities(int size) {
+    FINALCHECK("Enter handle_disequalities\n";);
     bool change = false;
     for (unsigned i=0; i<m_nqs.size(); i++) {
         ne &nq = m_nqs.ref(i);
@@ -681,6 +713,8 @@ void theory_seq::length_of_string_variable_equals_sum_of_loop_length_multiplied_
 }
 
 bool theory_seq::flatten_equalities(int size) {
+    FINALCHECK("Enter flatten_equalities\n";);
+
     bool change = false;
     // for (auto const& eq: m_rep) {
     //     if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
@@ -1078,17 +1112,17 @@ final_check_status theory_seq::final_check_eh() {
 //         return FC_CONTINUE;
 //     }
 
-    if (handle_disequalities(7)) {
+    if (handle_disequalities(1)) {
         TRACE("seq", tout << "handle_disequalities\n";);
         return FC_CONTINUE;
     }
 
-    if (flatten_equalities(7)) {
+    if (flatten_equalities(1)) {
         TRACE("seq", tout << "flatten_equalities\n";);
         return FC_CONTINUE;
     }
 
-    print_model(7);
+    print_model(1);
 
     if (m_unhandled_expr) {
         TRACEFIN("give_up");

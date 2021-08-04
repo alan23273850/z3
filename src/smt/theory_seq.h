@@ -519,6 +519,8 @@ namespace smt {
         // final check 
         bool is_under_approximation;
         void print_formulas(zstring msg);
+        void print_terms(const expr_ref_vector& terms);
+
         void block_curr_assignment();
         bool handle_disequalities(int size);
         bool flatten_equalities(int size);
