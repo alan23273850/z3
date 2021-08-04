@@ -321,6 +321,33 @@ struct scoped_enable_trace {
     }
 };
 
+void theory_seq::add_from_FA_to_PFA_constraints(int mode, unsigned qid, const expr_ref_vector &term, int size) {
+    for (unsigned i = 0; i < FA_left.size(); i++) {
+        for (unsigned j = 0; j < FA_right.size(); j++) {
+            // 1st: for each possibly valid sync loop, the two characters on that loop must be the same.
+            if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(mode, qid, i, j);
+
+            // 2nd: only at most one in-coming edge of one state can be selected.
+            only_at_most_one_incoming_edge_of_one_state_can_be_selected(mode, qid, i, j);
+
+            // 3rd: only at most one out-going edge of one state can be selected.
+            only_at_most_one_outgoing_edge_of_one_state_can_be_selected(mode, qid, i, j);
+
+            // 4th: selection of self edges or out-going edges implies selection of in-coming edges
+            selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(mode, qid, i, j);
+        }
+    }
+
+    // 5th: at least one in-coming edge of final state should be selected.
+    at_least_one_incoming_edge_of_final_state_should_be_selected(mode, qid);
+
+    // 6th: sum of edges for a single loop on the PFA must be mapped back to the original FA.
+    sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(mode, qid);
+
+    // 7th: len(x) == sum_i { len(x_i) * times(x_i) }
+    length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(term, size);
+}
+
 void theory_seq::block_curr_assignment() {
     FINALCHECK(__LINE__ << " enter " << __FUNCTION__ << std::endl;)
 
@@ -389,31 +416,7 @@ bool theory_seq::handle_disequalities(int size) {
             m_util.str.get_concat_units(nq.l(), lhs);
             from_word_term_to_FA(lhs, size, FA_left);
             from_nq_bridge_to_FA(nq.m_id, DISEQ_LHS, size, FA_right);
-            
-            for (unsigned i = 0; i < FA_left.size(); i++) {
-                for (unsigned j = 0; j < FA_right.size(); j++) {
-                    // 1st: for each possibly valid sync loop, the two characters on that loop must be the same.
-                    if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(DISEQ_LHS, nq.m_id, i, j);
-
-                    // 2nd: only at most one in-coming edge of one state can be selected.
-                    only_at_most_one_incoming_edge_of_one_state_can_be_selected(DISEQ_LHS, nq.m_id, i, j);
-
-                    // 3rd: only at most one out-going edge of one state can be selected.
-                    only_at_most_one_outgoing_edge_of_one_state_can_be_selected(DISEQ_LHS, nq.m_id, i, j);
-
-                    // 4th: selection of self edges or out-going edges implies selection of in-coming edges
-                    selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(DISEQ_LHS, nq.m_id, i, j);
-                }
-            }
-
-            // 5th: at least one in-coming edge of final state should be selected.
-            at_least_one_incoming_edge_of_final_state_should_be_selected(DISEQ_LHS, nq.m_id);
-
-            // 6th: sum of edges for a single loop on the PFA must be mapped back to the original FA.
-            sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(DISEQ_LHS, nq.m_id);
-
-            // 7th: len(x) == sum_i { len(x_i) * times(x_i) }
-            length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(lhs, size);
+            add_from_FA_to_PFA_constraints(DISEQ_LHS, nq.m_id, lhs, size);
             /***************************************************************************************/
 
             /***************************************** RHS *****************************************/
@@ -421,43 +424,17 @@ bool theory_seq::handle_disequalities(int size) {
             m_util.str.get_concat_units(nq.r(), rhs);
             from_word_term_to_FA(rhs, size, FA_left);
             from_nq_bridge_to_FA(nq.m_id, DISEQ_RHS, size, FA_right);
-
-            for (unsigned i = 0; i < FA_left.size(); i++) {
-                for (unsigned j = 0; j < FA_right.size(); j++) {
-                    // 1st: for each possibly valid sync loop, the two characters on that loop must be the same.
-                    if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(DISEQ_RHS, nq.m_id, i, j);
-
-                    // 2nd: only at most one in-coming edge of one state can be selected.
-                    only_at_most_one_incoming_edge_of_one_state_can_be_selected(DISEQ_RHS, nq.m_id, i, j);
-
-                    // 3rd: only at most one out-going edge of one state can be selected.
-                    only_at_most_one_outgoing_edge_of_one_state_can_be_selected(DISEQ_RHS, nq.m_id, i, j);
-
-                    // 4th: selection of self edges or out-going edges implies selection of in-coming edges
-                    selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(DISEQ_RHS, nq.m_id, i, j);
-                }
-            }
-
-            // 5th: at least one in-coming edge of final state should be selected.
-            at_least_one_incoming_edge_of_final_state_should_be_selected(DISEQ_RHS, nq.m_id);
-
-            // 6th: sum of edges for a single loop on the PFA must be mapped back to the original FA.
-            sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(DISEQ_RHS, nq.m_id);
-
-            // 7th: len(x) == sum_i { len(x_i) * times(x_i) }
-            length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(rhs, size);
+            add_from_FA_to_PFA_constraints(DISEQ_RHS, nq.m_id, rhs, size);
             /***************************************************************************************/
 
             /**************************** diff length or diff character ****************************/
-            add_axiom(mk_literal(m.mk_not(m_autil.mk_eq(mk_len(nq.l()).get(), mk_len(nq.r()).get()))),
-                      mk_literal(m.mk_and(m_autil.mk_eq(mk_nq_counter(nq.m_id, DIFF_LHS, 0).get(), mk_nq_counter(nq.m_id, DIFF_RHS, 0).get()),
-                                          m_autil.mk_eq(mk_nq_counter(nq.m_id, DIFF_LHS, 0).get(), m_autil.mk_int(1)),
-                                          m.mk_not(m_autil.mk_eq(mk_nq_char(nq.m_id, DIFF_LHS, 0).get(), mk_nq_char(nq.m_id, DIFF_RHS, 0).get())))));
+            expr_ref diff_length(m.mk_not(m_autil.mk_eq(mk_len(nq.l()).get(), mk_len(nq.r()).get())), m);
+            expr_ref diff_char(m.mk_and(m_autil.mk_eq(mk_nq_counter(nq.m_id, DIFF_LHS, 0).get(), mk_nq_counter(nq.m_id, DIFF_RHS, 0).get()),
+                                        m_autil.mk_eq(mk_nq_counter(nq.m_id, DIFF_LHS, 0).get(), m_autil.mk_int(1)),
+                                        m.mk_not(m_autil.mk_eq(mk_nq_char(nq.m_id, DIFF_LHS, 0).get(), mk_nq_char(nq.m_id, DIFF_RHS, 0).get()))), m);
+            add_axiom(mk_literal(diff_length.get()), mk_literal(diff_char.get()));
             FINALCHECK("diff_length_or_diff_character:\n";);
-            FINALCHECK(mk_pp(expr_ref(m.mk_not(m_autil.mk_eq(mk_len(nq.l()).get(), mk_len(nq.r()).get())), m).get(), m) << " or "
-                    << mk_pp(expr_ref(m.mk_and(m_autil.mk_eq(mk_nq_counter(nq.m_id, DIFF_LHS, 0).get(), mk_nq_counter(nq.m_id, DIFF_RHS, 0).get()),
-                                               m_autil.mk_eq(mk_nq_counter(nq.m_id, DIFF_LHS, 0).get(), m_autil.mk_int(1)),
-                                               m.mk_not(m_autil.mk_eq(mk_nq_char(nq.m_id, DIFF_LHS, 0).get(), mk_nq_char(nq.m_id, DIFF_RHS, 0).get()))), m).get(), m) << "\n";);
+            FINALCHECK(mk_pp(diff_length.get(), m) << " or " << mk_pp(diff_char.get(), m) << "\n";);
             /***************************************************************************************/
             change = true;
         }
@@ -500,7 +477,23 @@ expr_ref theory_seq::mk_nq_counter(unsigned nqid, int part, int i) {
     return result;
 }
 
-int theory_seq::atom_is_const_char_unicode(expr *const e) {
+bool theory_seq::atom_is_unit_var(expr *const e) {
+    expr *ch;
+    if (m_util.str.is_unit(e, ch)) {
+        if (m_util.is_const_char(ch)) {
+            return false;
+        }
+        else if (m_util.str.is_string(ch)) {
+            std::cerr << "[US]" << mk_pp(ch, m) << "\n";
+            SASSERT(false);
+        } else {
+            return true;
+        }
+    }
+    return false;
+}
+
+int theory_seq::get_atom_const_char_unicode(expr *const e) {
     expr *ch;
     if (m_util.str.is_unit(e, ch)) {
         unsigned ch2;
@@ -535,8 +528,11 @@ void theory_seq::from_word_term_to_FA(const expr_ref_vector &term, int p, struct
     FA.clear();
     for (const auto &atom: term) {
         int ch;
-        if ((ch = atom_is_const_char_unicode(atom)) >= 0) {
+        if ((ch = get_atom_const_char_unicode(atom)) >= 0) {
             FA.characters.push_back(m_autil.mk_int(ch)); //atom); // TODO: maybe "atom" is also ok? Then "ch" is not necessary.
+            FA.counters.push_back(m_autil.mk_int(1));
+        } else if (atom_is_unit_var(atom)) {
+            FA.characters.push_back(mk_FA_self_loop_char(atom, 0));
             FA.counters.push_back(m_autil.mk_int(1));
         } else {
             for (int i=0; i<p; i++) {
@@ -669,11 +665,13 @@ void theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_t
 void theory_seq::length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const expr_ref_vector &term, int p) {
     FINALCHECK("length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times:\n";);
     for (const auto &atom: term) {
-        if (atom_is_const_char_unicode(atom) < 0) {
+        if (atom_is_unit_var(atom)) { // TODO: can this block be omitted?
+            add_axiom(mk_literal(m_autil.mk_eq(mk_len(atom).get(), m_autil.mk_int(1))));
+            FINALCHECK(mk_pp(expr_ref(m_autil.mk_eq(mk_len(atom).get(), m_autil.mk_int(1)), m), m) << "\n";);
+        } else if (get_atom_const_char_unicode(atom)<0) {
             expr_ref_vector loops(m);
             for (int i=0; i<p; i++) {
-                loops.push_back(//m_autil.mk_mul(m_autil.mk_int(1), //mk_len(mk_FA_self_loop_char(atom, i)),
-                                mk_FA_self_loop_counter(atom, i));
+                loops.push_back(mk_FA_self_loop_counter(atom, i));
             }
             expr_ref sum_loop(m_autil.mk_add(loops), m);
             add_axiom(mk_literal(m_autil.mk_eq(mk_len(atom).get(), sum_loop.get())));
@@ -742,31 +740,9 @@ bool theory_seq::flatten_equalities(int size) {
             FINALCHECK("FA left = \n" << FA_left;);
             FINALCHECK("FA right = \n" << FA_right;);
 
-            for (unsigned i = 0; i < FA_left.size(); i++) {
-                for (unsigned j = 0; j < FA_right.size(); j++) {
-                    // 1st: for each possibly valid sync loop, the two characters on that loop must be the same.
-                    if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(EQ, eq.id(), i, j);
-
-                    // 2nd: only at most one in-coming edge of one state can be selected.
-                    only_at_most_one_incoming_edge_of_one_state_can_be_selected(EQ, eq.id(), i, j);
-
-                    // 3rd: only at most one out-going edge of one state can be selected.
-                    only_at_most_one_outgoing_edge_of_one_state_can_be_selected(EQ, eq.id(), i, j);
-
-                    // 4th: selection of self edges or out-going edges implies selection of in-coming edges
-                    selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(EQ, eq.id(), i, j);
-                }
-            }
-
-            // 5th: at least one in-coming edge of final state should be selected.
-            at_least_one_incoming_edge_of_final_state_should_be_selected(EQ, eq.id());
-
-            // 6th: sum of edges for a single loop on the PFA must be mapped back to the original FA.
-            sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(EQ, eq.id());
-
-            // 7th: len(x) == sum_i { len(x_i) * times(x_i) }
-            length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(eq.ls, size);
-            length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(eq.rs, size);
+            expr_ref_vector terms(eq.ls);
+            terms.append(eq.rs);
+            add_from_FA_to_PFA_constraints(EQ, eq.id(), terms, size);
 
             change = true;
         }
@@ -789,7 +765,7 @@ bool theory_seq::check_parikh_image() {
             for (const auto &term: {eq.ls, eq.rs}) {
                 for (const auto &atom: term) {
                     int ch;
-                    if ((ch=atom_is_const_char_unicode(atom))>=0 && !m_chars_pkh.contains(ch)){
+                    if ((ch=get_atom_const_char_unicode(atom))>=0 && !m_chars_pkh.contains(ch)){
                         m_chars_pkh.push_back(ch);
                     }
                 }
@@ -811,7 +787,7 @@ bool theory_seq::check_parikh_image() {
 
                     for (const auto &atom: word_term) {
                         int atom_char;
-                        if ((atom_char = atom_is_const_char_unicode(atom)) >= 0) {
+                        if ((atom_char = get_atom_const_char_unicode(atom)) >= 0) {
                             if ((unsigned)atom_char == index_char) {
                                 index_char_occurrence.push_back(m_autil.mk_int(1));
                             }
@@ -844,7 +820,15 @@ void theory_seq::print_model(int size) {
                     m_util.str.get_concat(t, term);
                     for (const auto &atom: term) {
                         int ch;
-                        if ((ch = atom_is_const_char_unicode(atom)) < 0) {
+                        if ((ch = get_atom_const_char_unicode(atom)) >= 0) {
+                            DISPLAYMODEL("(" << ch << ")";);
+                        } else if (atom_is_unit_var(atom)) {
+                            rational _unicode;
+                            DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
+                            if (!get_num_value(mk_FA_self_loop_char(atom, 0), _unicode))
+                                SASSERT(false);
+                            DISPLAYMODEL("(" << _unicode << ")]";);
+                        } else {
                             rational _counter, _unicode;
                             DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
                             for (int i=0; i<size; i++) {
@@ -857,8 +841,7 @@ void theory_seq::print_model(int size) {
                                 }
                             }
                             DISPLAYMODEL("]";);
-                        } else
-                            DISPLAYMODEL("(" << ch << ")";);
+                        }
                     }
                     if (!mode) DISPLAYMODEL("\n==";);
                     mode++;
@@ -874,7 +857,15 @@ void theory_seq::print_model(int size) {
                 DISPLAYMODEL((!mode ? "LHS: " : "RHS: "););
                 for (const auto &atom: term) {
                     int ch;
-                    if ((ch = atom_is_const_char_unicode(atom)) < 0) {
+                    if ((ch = get_atom_const_char_unicode(atom)) >= 0) {
+                        DISPLAYMODEL("(" << ch << ")";);
+                    } else if (atom_is_unit_var(atom)) {
+                        rational _unicode;
+                        DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
+                        if (!get_num_value(mk_FA_self_loop_char(atom, 0), _unicode))
+                            SASSERT(false);
+                        DISPLAYMODEL("(" << _unicode << ")]";);
+                    } else {
                         rational _counter, _unicode;
                         DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
                         for (int i=0; i<size; i++) {
@@ -887,8 +878,7 @@ void theory_seq::print_model(int size) {
                             }
                         }
                         DISPLAYMODEL("]";);
-                    } else
-                        DISPLAYMODEL("(" << ch << ")";);
+                    }
                 }
                 if (!mode) DISPLAYMODEL("\n==";);
                 mode++;
@@ -905,7 +895,15 @@ void theory_seq::print_model(int size) {
                 m_util.str.get_concat(t.get(), term);
                 for (const auto &atom: term) {
                     int ch;
-                    if ((ch = atom_is_const_char_unicode(atom)) < 0) {
+                    if ((ch = get_atom_const_char_unicode(atom)) >= 0) {
+                        DISPLAYMODEL("(" << ch << ")";);
+                    } else if (atom_is_unit_var(atom)) {
+                        rational _unicode;
+                        DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
+                        if (!get_num_value(mk_FA_self_loop_char(atom, 0), _unicode))
+                            SASSERT(false);
+                        DISPLAYMODEL("(" << _unicode << ")]";);
+                    } else {
                         rational _counter, _unicode;
                         DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
                         for (int i=0; i<size; i++) {
@@ -918,8 +916,7 @@ void theory_seq::print_model(int size) {
                             }
                         }
                         DISPLAYMODEL("]";);
-                    } else
-                        DISPLAYMODEL("(" << ch << ")";);
+                    }
                 }
                 // DISPLAYMODEL(" == ";);
                 // rational _counter, _unicode;
@@ -949,7 +946,7 @@ void theory_seq::print_model(int size) {
             //     expr_ref_vector term(m);
             //     m_util.str.get_concat(t.get(), term);
             //     for (const auto &atom: term) {
-            //         if (atom_is_const_char_unicode(atom) < 0) {
+            //         if (get_atom_const_char_unicode(atom) < 0) {
             //             rational _counter, _unicode;
             //             DISPLAYMODEL("[" << mk_pp(atom, m) << "] ==> ";);
             //             for (int i=0; i<size; i++) {

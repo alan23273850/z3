@@ -459,7 +459,8 @@ namespace smt {
             SUFFIX_RHS
         };
 
-        int atom_is_const_char_unicode(expr *const e);
+        bool atom_is_unit_var(expr *const e);
+        int get_atom_const_char_unicode(expr *const e);
 
         // flatten_equalities
         enum PFA_direction {
@@ -499,6 +500,8 @@ namespace smt {
         expr_ref mk_PFA_edge_selection(int mode, unsigned qid, const std::pair<int, int> &state1, const std::pair<int, int> &state2);
         expr_ref mk_nq_char(unsigned nqid, int part, int i);
         expr_ref mk_nq_counter(unsigned nqid, int part, int i);
+
+        void add_from_FA_to_PFA_constraints(int mode, unsigned qid, const expr_ref_vector &term, int size);
 
         struct FA FA_left, FA_right;
         bool can_be_a_valid_sync_loop(unsigned i, unsigned j);
