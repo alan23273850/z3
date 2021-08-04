@@ -522,10 +522,56 @@ void theory_seq::length_of_string_variable_equals_sum_of_loop_length_multiplied_
     }
 }
 
-void theory_seq::flatten_string_constraints(int size) {
+bool theory_seq::flatten_equalities(int size) {
+    bool change = false;
+    // for (auto const& eq: m_rep) {
+    //     if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
+    //         eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
+    //         if (!m_repids.contains(std::make_pair(eq.v->get_id() + eq.e->get_id(), std::abs((int)eq.v->get_id() - (int)eq.e->get_id())))) {
+    //             m_repids.push_back(std::make_pair(eq.v->get_id() + eq.e->get_id(), std::abs((int)eq.v->get_id() - (int)eq.e->get_id())));
+    //             expr_ref_vector lhs(m);
+    //             m_util.str.get_concat(eq.v, lhs);
+    //             from_word_term_to_FA(lhs, size, FA_left);
+    //             expr_ref_vector rhs(m);
+    //             m_util.str.get_concat(eq.e, rhs);
+    //             from_word_term_to_FA(rhs, size, FA_right);
+
+    //             FINALCHECK("FA left = \n" << FA_left;);
+    //             FINALCHECK("FA right = \n" << FA_right;);
+
+    //             for (unsigned i = 0; i < FA_left.size(); i++) {
+    //                 for (unsigned j = 0; j < FA_right.size(); j++) {
+    //                     // 1st: for each possibly valid sync loop, the two characters on that loop must be the same.
+    //                     if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(3, eq.v->get_id() + eq.e->get_id(), i, j);
+
+    //                     // 2nd: only at most one in-coming edge of one state can be selected.
+    //                     only_at_most_one_incoming_edge_of_one_state_can_be_selected(3, eq.v->get_id() + eq.e->get_id(), i, j);
+
+    //                     // 3rd: only at most one out-going edge of one state can be selected.
+    //                     only_at_most_one_outgoing_edge_of_one_state_can_be_selected(3, eq.v->get_id() + eq.e->get_id(), i, j);
+
+    //                     // 4th: selection of self edges or out-going edges implies selection of in-coming edges
+    //                     selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(3, eq.v->get_id() + eq.e->get_id(), i, j);
+    //                 }
+    //             }
+
+    //             // 5th: at least one in-coming edge of final state should be selected.
+    //             at_least_one_incoming_edge_of_final_state_should_be_selected(3, eq.v->get_id() + eq.e->get_id());
+
+    //             // 6th: sum of edges for a single loop on the PFA must be mapped back to the original FA.
+    //             sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(3, eq.v->get_id() + eq.e->get_id());
+
+    //             // 7th: len(x) == sum_i { len(x_i) * times(x_i) }
+    //             length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(lhs, size);
+    //             length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(rhs, size);
+
+    //             change = true;
+    //         }
+    //     }
+    // }
     for (const auto &eq: m_eqs) {
-        if(!m_flatterned_eqids.contains(eq.id())) {
-            m_flatterned_eqids.push_back(eq.id());
+        if(!m_flattened_eqids.contains(eq.id())) {
+            m_flattened_eqids.push_back(eq.id());
 
             display_equation(std::cout, eq);
 
@@ -561,8 +607,11 @@ void theory_seq::flatten_string_constraints(int size) {
 
             // 7th: len(x) == sum_i { len(x_i) * times(x_i) }
             length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(eq, size);
+
+            change = true;
         }
     }
+    return change;
 }
 
 // TODO: do all const char exprs carrying the same character have the same pointer or id?
@@ -629,7 +678,7 @@ final_check_status theory_seq::final_check_eh() {
     m_new_propagation = false;
     TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
     TRACE("seq_verbose", ctx.display(tout););
-    flatten_string_constraints(5);
+    flatten_equalities(5);
     // std::cout << m_nqs.size() << "\n";
     if (/*m_nqs.size()>0 ||*/ m_ncs.size()>0 || m_rcs.size()>0)
         return FC_GIVEUP;
@@ -2228,10 +2277,12 @@ void theory_seq::init_model(expr_ref_vector const& es) {
 
 void theory_seq::finalize_model(model_generator& mg) {
     m_rep.pop_scope(1);
+    m_repids.pop_scope(1);
 }
 
 void theory_seq::init_model(model_generator & mg) {
     m_rep.push_scope();
+    m_repids.push_scope();
     m_factory = alloc(seq_factory, get_manager(), get_family_id(), mg.get_model());
     mg.register_factory(m_factory);
     for (ne const& n : m_nqs) {
@@ -3496,12 +3547,17 @@ void theory_seq::new_diseq_eh(theory_var v1, theory_var v2) {
 void theory_seq::push_scope_eh() {
     theory::push_scope_eh();
     m_rep.push_scope();
+    m_repids.push_scope();
     m_exclude.push_scope();
     m_dm.push_scope();
     m_trail_stack.push_scope();
     m_trail_stack.push(value_trail<unsigned>(m_axioms_head));
     m_eqs.push_scope();
+    m_eqids_pkh.push_scope();
+    m_chars_pkh.push_scope();
+    m_flattened_eqids.push_scope();
     m_nqs.push_scope();
+    m_nqids.push_scope();
     m_ncs.push_scope();
     m_rcs.push_scope();
     m_lts.push_scope();
@@ -3513,9 +3569,14 @@ void theory_seq::pop_scope_eh(unsigned num_scopes) {
     theory::pop_scope_eh(num_scopes);
     m_dm.pop_scope(num_scopes);
     m_rep.pop_scope(num_scopes);
+    m_repids.pop_scope(num_scopes);
     m_exclude.pop_scope(num_scopes);
     m_eqs.pop_scope(num_scopes);
+    m_eqids_pkh.pop_scope(num_scopes);
+    m_chars_pkh.pop_scope(num_scopes);
+    m_flattened_eqids.pop_scope(num_scopes);
     m_nqs.pop_scope(num_scopes);
+    m_nqids.pop_scope(num_scopes);
     m_ncs.pop_scope(num_scopes);
     m_rcs.pop_scope(num_scopes);
     m_lts.pop_scope(num_scopes);

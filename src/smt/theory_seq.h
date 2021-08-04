@@ -345,10 +345,12 @@ namespace smt {
         scoped_vector<depeq>       m_eqs;        // set of current equations.
         scoped_vector<unsigned>    m_eqids_pkh;  // set of current equations not processed by check_parikh_image
         scoped_vector<expr*>       m_chars_pkh;  // set of characters to be used by check_parikh_image
-        scoped_vector<unsigned>    m_flatterned_eqids;  // set of flatterned word equation ids
+        scoped_vector<unsigned>    m_nqids;      // set of current word disequality ids not processed yet
+        scoped_vector<unsigned>    m_flattened_eqids;  // set of flatterned word equation ids
+        scoped_vector<std::pair<unsigned, unsigned>> m_repids;  // set of flattened word equation ids
         scoped_vector<ne>          m_nqs;        // set of current disequalities.
         scoped_vector<nc>          m_ncs;        // set of non-contains constraints.
-        scoped_vector<rc>          m_rcs;        // set of regular experssion constraints.
+        scoped_vector<rc>          m_rcs;        // set of regular expression constraints.
 
         scoped_vector<expr*>       m_lts;        // set of asserted str.<, str.<= literals
         bool                       m_lts_checked; 
@@ -441,7 +443,7 @@ namespace smt {
 
         bool atom_is_const_char(expr *const e, expr* &ch);
 
-        // flatten_string_constraints
+        // flatten_equalities
         enum PFA_direction {
             LEFT_LOOP_RIGHT_LOOP,
             LEFT_NEXT_RIGHT_LOOP,
@@ -488,7 +490,7 @@ namespace smt {
 
         // final check 
         void block_curr_assignment();
-        void flatten_string_constraints(int size);
+        bool flatten_equalities(int size);
         bool check_parikh_image();       // propagate check_parikh_image equalities
         bool simplify_and_solve_eqs();   // solve unitary equalities
         bool reduce_length_eq();
