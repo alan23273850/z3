@@ -685,8 +685,8 @@ bool theory_seq::flatten_equalities(int size) {
     // for (auto const& eq: m_rep) {
     //     if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
     //         eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
-    //         if (!m_eqpairs.contains(std::make_pair(eq.v->get_id() + eq.e->get_id(), std::abs((int)eq.v->get_id() - (int)eq.e->get_id())))) {
-    //             m_eqpairs.push_back(std::make_pair(eq.v->get_id() + eq.e->get_id(), std::abs((int)eq.v->get_id() - (int)eq.e->get_id())));
+    //         if (!m_repids.contains(std::make_pair(eq.v->get_id() + eq.e->get_id(), std::abs((int)eq.v->get_id() - (int)eq.e->get_id())))) {
+    //             m_repids.push_back(std::make_pair(eq.v->get_id() + eq.e->get_id(), std::abs((int)eq.v->get_id() - (int)eq.e->get_id())));
     //             expr_ref_vector lhs(m);
     //             m_util.str.get_concat(eq.v, lhs);
     //             from_word_term_to_FA(lhs, size, FA_left);
@@ -2440,10 +2440,12 @@ void theory_seq::init_model(expr_ref_vector const& es) {
 
 void theory_seq::finalize_model(model_generator& mg) {
     m_rep.pop_scope(1);
+    m_repids.pop_scope(1);
 }
 
 void theory_seq::init_model(model_generator & mg) {
     m_rep.push_scope();
+    m_repids.push_scope();
     m_factory = alloc(seq_factory, get_manager(), get_family_id(), mg.get_model());
     mg.register_factory(m_factory);
     for (ne const& n : m_nqs) {
@@ -3708,12 +3710,17 @@ void theory_seq::new_diseq_eh(theory_var v1, theory_var v2) {
 void theory_seq::push_scope_eh() {
     theory::push_scope_eh();
     m_rep.push_scope();
+    m_repids.push_scope();
     m_exclude.push_scope();
     m_dm.push_scope();
     m_trail_stack.push_scope();
     m_trail_stack.push(value_trail<unsigned>(m_axioms_head));
     m_eqs.push_scope();
+    m_eqids_pkh.push_scope();
+    m_chars_pkh.push_scope();
+    m_flattened_eqids.push_scope();
     m_nqs.push_scope();
+    m_nqids.push_scope();
     m_ncs.push_scope();
     m_rcs.push_scope();
     m_lts.push_scope();
@@ -3725,9 +3732,14 @@ void theory_seq::pop_scope_eh(unsigned num_scopes) {
     theory::pop_scope_eh(num_scopes);
     m_dm.pop_scope(num_scopes);
     m_rep.pop_scope(num_scopes);
+    m_repids.pop_scope(num_scopes);
     m_exclude.pop_scope(num_scopes);
     m_eqs.pop_scope(num_scopes);
+    m_eqids_pkh.pop_scope(num_scopes);
+    m_chars_pkh.pop_scope(num_scopes);
+    m_flattened_eqids.pop_scope(num_scopes);
     m_nqs.pop_scope(num_scopes);
+    m_nqids.pop_scope(num_scopes);
     m_ncs.pop_scope(num_scopes);
     m_rcs.pop_scope(num_scopes);
     m_lts.pop_scope(num_scopes);

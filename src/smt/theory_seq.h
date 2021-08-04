@@ -349,10 +349,10 @@ namespace smt {
         scoped_vector<unsigned>    m_chars_pkh;  // set of characters to be used by check_parikh_image
         scoped_vector<unsigned>    m_nqids;      // set of current word disequality ids not processed yet
         scoped_vector<unsigned>    m_flattened_eqids;  // set of flattened word equation ids
-        scoped_vector<std::pair<unsigned, unsigned>> m_eqpairs;  // set of flattened word equation ids
+        scoped_vector<std::pair<unsigned, unsigned>> m_repids;  // set of flattened word equation ids
         scoped_vector<ne>          m_nqs;        // set of current disequalities.
         scoped_vector<nc>          m_ncs;        // set of non-contains constraints.
-        scoped_vector<rc>          m_rcs;        // set of regular experssion constraints.
+        scoped_vector<rc>          m_rcs;        // set of regular expression constraints.
 
         scoped_vector<expr*>       m_lts;        // set of asserted str.<, str.<= literals
         bool                       m_lts_checked; 
