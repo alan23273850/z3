@@ -1092,18 +1092,17 @@ final_check_status theory_seq::final_check_eh() {
 //         return FC_CONTINUE;
 //     }
 
-    if (flatten_equalities(1)) {
-        TRACE("seq", tout << "flatten_equalities\n";);
-        return FC_CONTINUE;
-    }
-
-    if (handle_disequalities(1)) {
+    if (handle_disequalities(7)) {
         TRACE("seq", tout << "handle_disequalities\n";);
         return FC_CONTINUE;
     }
 
+    if (flatten_equalities(7)) {
+        TRACE("seq", tout << "flatten_equalities\n";);
+        return FC_CONTINUE;
+    }
 
-    print_model(1);
+    print_model(7);
 
     if (m_unhandled_expr) {
         TRACEFIN("give_up");
@@ -3723,6 +3722,7 @@ void theory_seq::new_diseq_eh(theory_var v1, theory_var v2) {
 }
 
 void theory_seq::push_scope_eh() {
+    FINALCHECK("push_scope: "<<ctx.get_scope_level()<<"\n";);
     theory::push_scope_eh();
     m_rep.push_scope();
     m_repids.push_scope();
@@ -3743,6 +3743,7 @@ void theory_seq::push_scope_eh() {
 }
 
 void theory_seq::pop_scope_eh(unsigned num_scopes) {
+    FINALCHECK("pop_scope: "<<ctx.get_scope_level()<<" with "<<num_scopes<<" levels\n";);
     m_trail_stack.pop_scope(num_scopes);
     theory::pop_scope_eh(num_scopes);
     m_dm.pop_scope(num_scopes);
