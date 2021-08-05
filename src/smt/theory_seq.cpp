@@ -748,11 +748,14 @@ bool theory_seq::flatten_equalities(int size) {
             from_word_term_to_FA(eq.ls, size, FA_left);
             from_word_term_to_FA(eq.rs, size, FA_right);
 
-            FINALCHECK("FA left = \n" << FA_left;);
-            FINALCHECK("FA right = \n" << FA_right;);
+            FINALCHECK("FA left: " << FA_left <<"\n";);
+            FINALCHECK("FA right: " << FA_right <<"\n";);
 
             expr_ref_vector terms(eq.ls);
             terms.append(eq.rs);
+
+            FINALCHECK("\n===================\n";);
+
             add_from_FA_to_PFA_constraints(EQ, eq.id(), terms, size);
 
             change = true;
@@ -1089,15 +1092,16 @@ final_check_status theory_seq::final_check_eh() {
 //         return FC_CONTINUE;
 //     }
 
+    if (flatten_equalities(1)) {
+        TRACE("seq", tout << "flatten_equalities\n";);
+        return FC_CONTINUE;
+    }
+
     if (handle_disequalities(1)) {
         TRACE("seq", tout << "handle_disequalities\n";);
         return FC_CONTINUE;
     }
 
-    if (flatten_equalities(1)) {
-        TRACE("seq", tout << "flatten_equalities\n";);
-        return FC_CONTINUE;
-    }
 
     print_model(1);
 
