@@ -496,20 +496,19 @@ namespace smt {
         expr_ref mk_parikh_image_counter(expr *var, unsigned ch);
         expr_ref mk_FA_self_loop_char(expr *var, unsigned i);
         expr_ref mk_FA_self_loop_counter(expr *var, unsigned i);
-        expr_ref mk_PFA_loop_counter(int mode, unsigned qid, unsigned i, unsigned j);
-        expr_ref mk_PFA_edge_selection(int mode, unsigned qid, const std::pair<int, int> &state1, const std::pair<int, int> &state2);
+        expr_ref mk_PFA_loop_counter(int id1, int id2, unsigned i, unsigned j);
 
-        void add_from_FA_to_PFA_constraints(int mode, unsigned qid, const expr_ref_vector &term, int size);
+        void add_from_FA_to_PFA_constraints(int id1, int id2, const expr_ref_vector &term, int size);
 
         struct FA FA_left, FA_right;
         bool can_be_a_valid_sync_loop(unsigned i, unsigned j);
         void from_word_term_to_FA(const expr_ref_vector &term, int p, struct FA &FA);
-        void if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(int mode, unsigned qid, int i, int j);
-        void only_at_most_one_incoming_edge_of_one_state_can_be_selected(int mode, unsigned qid, int i, int j);
-        void only_at_most_one_outgoing_edge_of_one_state_can_be_selected(int mode, unsigned qid, unsigned i, unsigned j);
-        void selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(int mode, unsigned qid, unsigned i, unsigned j);
-        void at_least_one_incoming_edge_of_final_state_should_be_selected(int mode, unsigned qid);
-        void sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(int mode, unsigned qid);
+        void if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(int id1, int id2, int i, int j);
+        void only_at_most_one_incoming_edge_of_one_state_can_be_selected(int id1, int id2, int i, int j);
+        void only_at_most_one_outgoing_edge_of_one_state_can_be_selected(int id1, int id2, unsigned i, unsigned j);
+        void selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(int id1, int id2, unsigned i, unsigned j);
+        void at_least_one_incoming_edge_of_final_state_should_be_selected(int id1, int id2);
+        void sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(int id1, int id2);
         void length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const expr_ref_vector &term, int p);
         /***************************************************************************************************/
 
@@ -521,6 +520,7 @@ namespace smt {
         void block_curr_assignment();
         bool handle_disequalities(int size);
         bool flatten_equalities(int size);
+        void print_term(const expr_ref_vector &term, int size);
         void print_model(int size);
         bool check_parikh_image();       // propagate check_parikh_image equalities
         bool simplify_and_solve_eqs();   // solve unitary equalities

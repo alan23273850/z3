@@ -321,28 +321,28 @@ struct scoped_enable_trace {
     }
 };
 
-void theory_seq::add_from_FA_to_PFA_constraints(int mode, unsigned qid, const expr_ref_vector &term, int size) {
+void theory_seq::add_from_FA_to_PFA_constraints(int id1, int id2, const expr_ref_vector &term, int size) {
     for (unsigned i = 0; i < FA_left.size(); i++) {
         for (unsigned j = 0; j < FA_right.size(); j++) {
             // 1st: for each possibly valid sync loop, the two characters on that loop must be the same.
-            if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(mode, qid, i, j);
+            if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(id1, id2, i, j);
 
             // 2nd: only at most one in-coming edge of one state can be selected.
-            only_at_most_one_incoming_edge_of_one_state_can_be_selected(mode, qid, i, j);
+            only_at_most_one_incoming_edge_of_one_state_can_be_selected(id1, id2, i, j);
 
             // 3rd: only at most one out-going edge of one state can be selected.
-            only_at_most_one_outgoing_edge_of_one_state_can_be_selected(mode, qid, i, j);
+            only_at_most_one_outgoing_edge_of_one_state_can_be_selected(id1, id2, i, j);
 
             // 4th: selection of self edges or out-going edges implies selection of in-coming edges
-            selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(mode, qid, i, j);
+            selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(id1, id2, i, j);
         }
     }
 
     // 5th: at least one in-coming edge of final state should be selected.
-    at_least_one_incoming_edge_of_final_state_should_be_selected(mode, qid);
+    at_least_one_incoming_edge_of_final_state_should_be_selected(id1, id2);
 
     // 6th: sum of edges for a single loop on the PFA must be mapped back to the original FA.
-    sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(mode, qid);
+    sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(id1, id2);
 
     // 7th: len(x) == sum_i { len(x_i) * times(x_i) }
     length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(term, size);
@@ -491,14 +491,10 @@ expr_ref theory_seq::mk_FA_self_loop_counter(expr *var, unsigned i) {
     add_axiom(mk_literal(m_autil.mk_ge(result.get(), m_autil.mk_int(0))));
     return result;
 }
-expr_ref theory_seq::mk_PFA_loop_counter(int mode, unsigned qid, unsigned i, unsigned j) {
-    expr_ref result = m_sk.mk_PFA_loop_counter(mode, qid, i, j);
+expr_ref theory_seq::mk_PFA_loop_counter(int id1, int id2, unsigned i, unsigned j) {
+    expr_ref result = m_sk.mk_PFA_loop_counter(id1, id2, i, j);
     add_axiom(mk_literal(m_autil.mk_ge(result.get(), m_autil.mk_int(0))));
     return result;
-}
-expr_ref theory_seq::mk_PFA_edge_selection(int mode, unsigned qid, const std::pair<int, int> &state1, const std::pair<int, int> &state2) {
-    expr_ref result = m_sk.mk_PFA_edge_selection(mode, qid, state1, state2);
-    return result; // boolean types don't need >=0 wrapper.
 }
 
 bool theory_seq::atom_is_unit_var(expr *const e) {
@@ -571,22 +567,22 @@ void theory_seq::from_word_term_to_FA(const expr_ref_vector &term, int p, struct
     }
 }
 
-void theory_seq::if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(int mode, unsigned qid, int i, int j) {
+void theory_seq::if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(int id1, int id2, int i, int j) {
     if (can_be_a_valid_sync_loop(i, j)) {
-        expr_ref loop_i_j_gt_zero(m_autil.mk_ge(mk_PFA_loop_counter(mode, qid, i, j), m_autil.mk_int(1)), m);
+        expr_ref loop_i_j_gt_zero(m_autil.mk_ge(mk_PFA_loop_counter(id1, id2, i, j), m_autil.mk_int(1)), m);
         expr_ref char_i_equals_char_j(m_autil.mk_eq(FA_left.characters[i].get(), FA_right.characters[j].get()), m);
         add_axiom(~mk_literal(loop_i_j_gt_zero), mk_literal(char_i_equals_char_j));
-        FINALCHECK("if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal: \n" << mk_pp(mk_PFA_loop_counter(mode, qid, i, j), m) << " >= 1 ==> ";);
+        FINALCHECK("if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal: \n" << mk_pp(mk_PFA_loop_counter(id1, id2, i, j), m) << " >= 1 ==> ";);
         FINALCHECK(mk_pp(FA_left.characters[i].get(), m) << " = " << mk_pp(FA_right.characters[j].get(), m)  << "\n";);
     }
 }
 
-void theory_seq::only_at_most_one_incoming_edge_of_one_state_can_be_selected(int mode, unsigned qid, int i, int j) {
+void theory_seq::only_at_most_one_incoming_edge_of_one_state_can_be_selected(int id1, int id2, int i, int j) {
     expr_ref_vector edges(m);
     expr_ref_vector literals_can_not_be_both_true(m);
-    if (i >= 1) edges.push_back(mk_PFA_edge_selection(mode, qid, std::make_pair(i-1, j), std::make_pair(i, j)));
-    if (j >= 1) edges.push_back(mk_PFA_edge_selection(mode, qid, std::make_pair(i, j-1), std::make_pair(i, j)));
-    if (i>=1 && j>=1) edges.push_back(mk_PFA_edge_selection(mode, qid, std::make_pair(i-1, j-1), std::make_pair(i, j)));
+    if (i >= 1) edges.push_back(m_sk.mk_PFA_edge_selection(id1, id2, std::make_pair(i-1, j), std::make_pair(i, j)));
+    if (j >= 1) edges.push_back(m_sk.mk_PFA_edge_selection(id1, id2, std::make_pair(i, j-1), std::make_pair(i, j)));
+    if (i>=1 && j>=1) edges.push_back(m_sk.mk_PFA_edge_selection(id1, id2, std::make_pair(i-1, j-1), std::make_pair(i, j)));
     if (edges.size() >= 2) {
         for (unsigned i=0; i<edges.size(); i++)
             for (unsigned j=i+1; j<edges.size(); j++)
@@ -597,12 +593,12 @@ void theory_seq::only_at_most_one_incoming_edge_of_one_state_can_be_selected(int
     }
 }
 
-void theory_seq::only_at_most_one_outgoing_edge_of_one_state_can_be_selected(int mode, unsigned qid, unsigned i, unsigned j) {
+void theory_seq::only_at_most_one_outgoing_edge_of_one_state_can_be_selected(int id1, int id2, unsigned i, unsigned j) {
     expr_ref_vector edges(m);
     expr_ref_vector literals_can_not_be_both_true(m);
-    if (i+1 < FA_left.size()) edges.push_back(mk_PFA_edge_selection(mode, qid, std::make_pair(i, j), std::make_pair(i+1, j)));
-    if (j+1 < FA_right.size()) edges.push_back(mk_PFA_edge_selection(mode, qid, std::make_pair(i, j), std::make_pair(i, j+1)));
-    if (i+1<FA_left.size() && j+1<FA_right.size()) edges.push_back(mk_PFA_edge_selection(mode, qid, std::make_pair(i, j), std::make_pair(i+1, j+1)));
+    if (i+1 < FA_left.size()) edges.push_back(m_sk.mk_PFA_edge_selection(id1, id2, std::make_pair(i, j), std::make_pair(i+1, j)));
+    if (j+1 < FA_right.size()) edges.push_back(m_sk.mk_PFA_edge_selection(id1, id2, std::make_pair(i, j), std::make_pair(i, j+1)));
+    if (i+1<FA_left.size() && j+1<FA_right.size()) edges.push_back(m_sk.mk_PFA_edge_selection(id1, id2, std::make_pair(i, j), std::make_pair(i+1, j+1)));
     if (edges.size() >= 2) {
         for (unsigned i=0; i<edges.size(); i++)
             for (unsigned j=i+1; j<edges.size(); j++)
@@ -613,18 +609,18 @@ void theory_seq::only_at_most_one_outgoing_edge_of_one_state_can_be_selected(int
     }
 }
 
-void theory_seq::selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(int mode, unsigned qid, unsigned i, unsigned j) {
+void theory_seq::selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(int id1, int id2, unsigned i, unsigned j) {
     expr_ref_vector self_loop_or_outgoing_edges(m);
     expr_ref_vector incoming_edges(m);
     if (can_be_a_valid_sync_loop(i, j))
-        self_loop_or_outgoing_edges.push_back(m_autil.mk_ge(mk_PFA_loop_counter(mode, qid, i, j), m_autil.mk_int(1)));
-    if (i+1 < FA_left.size()) self_loop_or_outgoing_edges.push_back(mk_PFA_edge_selection(mode, qid, std::make_pair(i, j), std::make_pair(i+1, j)));
-    if (j+1 < FA_right.size()) self_loop_or_outgoing_edges.push_back(mk_PFA_edge_selection(mode, qid, std::make_pair(i, j), std::make_pair(i, j+1)));
-    if (i+1<FA_left.size() && j+1<FA_right.size()) self_loop_or_outgoing_edges.push_back(mk_PFA_edge_selection(mode, qid, std::make_pair(i, j), std::make_pair(i+1, j+1)));
+        self_loop_or_outgoing_edges.push_back(m_autil.mk_ge(mk_PFA_loop_counter(id1, id2, i, j), m_autil.mk_int(1)));
+    if (i+1 < FA_left.size()) self_loop_or_outgoing_edges.push_back(m_sk.mk_PFA_edge_selection(id1, id2, std::make_pair(i, j), std::make_pair(i+1, j)));
+    if (j+1 < FA_right.size()) self_loop_or_outgoing_edges.push_back(m_sk.mk_PFA_edge_selection(id1, id2, std::make_pair(i, j), std::make_pair(i, j+1)));
+    if (i+1<FA_left.size() && j+1<FA_right.size()) self_loop_or_outgoing_edges.push_back(m_sk.mk_PFA_edge_selection(id1, id2, std::make_pair(i, j), std::make_pair(i+1, j+1)));
 
-    if (i >= 1) incoming_edges.push_back(mk_PFA_edge_selection(mode, qid, std::make_pair(i-1, j), std::make_pair(i, j)));
-    if (j >= 1) incoming_edges.push_back(mk_PFA_edge_selection(mode, qid, std::make_pair(i, j-1), std::make_pair(i, j)));
-    if (i>=1 && j>=1) incoming_edges.push_back(mk_PFA_edge_selection(mode, qid, std::make_pair(i-1, j-1), std::make_pair(i, j)));
+    if (i >= 1) incoming_edges.push_back(m_sk.mk_PFA_edge_selection(id1, id2, std::make_pair(i-1, j), std::make_pair(i, j)));
+    if (j >= 1) incoming_edges.push_back(m_sk.mk_PFA_edge_selection(id1, id2, std::make_pair(i, j-1), std::make_pair(i, j)));
+    if (i>=1 && j>=1) incoming_edges.push_back(m_sk.mk_PFA_edge_selection(id1, id2, std::make_pair(i-1, j-1), std::make_pair(i, j)));
 
     if (self_loop_or_outgoing_edges.size()>0 && incoming_edges.size()>0) {
         add_axiom(~mk_literal(m.mk_or(self_loop_or_outgoing_edges)), mk_literal(m.mk_or(incoming_edges)));
@@ -633,12 +629,12 @@ void theory_seq::selection_of_self_edge_or_outgoing_edges_implies_selection_of_i
     }
 }
 
-void theory_seq::at_least_one_incoming_edge_of_final_state_should_be_selected(int mode, unsigned qid) {
+void theory_seq::at_least_one_incoming_edge_of_final_state_should_be_selected(int id1, int id2) {
     SASSERT(FA_left.size()>=1 && FA_right.size()>=1);
     expr_ref_vector incoming_edges(m);
-    if (FA_left.size() >= 2) incoming_edges.push_back(mk_PFA_edge_selection(mode, qid, std::make_pair(FA_left.size()-2, FA_right.size()-1), std::make_pair(FA_left.size()-1, FA_right.size()-1)));
-    if (FA_right.size() >= 2) incoming_edges.push_back(mk_PFA_edge_selection(mode, qid, std::make_pair(FA_left.size()-1, FA_right.size()-2), std::make_pair(FA_left.size()-1, FA_right.size()-1)));
-    if (FA_left.size()>=2 && FA_right.size()>=2) incoming_edges.push_back(mk_PFA_edge_selection(mode, qid, std::make_pair(FA_left.size()-2, FA_right.size()-2), std::make_pair(FA_left.size()-1, FA_right.size()-1)));
+    if (FA_left.size() >= 2) incoming_edges.push_back(m_sk.mk_PFA_edge_selection(id1, id2, std::make_pair(FA_left.size()-2, FA_right.size()-1), std::make_pair(FA_left.size()-1, FA_right.size()-1)));
+    if (FA_right.size() >= 2) incoming_edges.push_back(m_sk.mk_PFA_edge_selection(id1, id2, std::make_pair(FA_left.size()-1, FA_right.size()-2), std::make_pair(FA_left.size()-1, FA_right.size()-1)));
+    if (FA_left.size()>=2 && FA_right.size()>=2) incoming_edges.push_back(m_sk.mk_PFA_edge_selection(id1, id2, std::make_pair(FA_left.size()-2, FA_right.size()-2), std::make_pair(FA_left.size()-1, FA_right.size()-1)));
 
     if (incoming_edges.size()>0) {
         add_axiom(mk_literal(m.mk_or(incoming_edges)));
@@ -647,13 +643,13 @@ void theory_seq::at_least_one_incoming_edge_of_final_state_should_be_selected(in
     }
 }
 
-void theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(int mode, unsigned qid) {
+void theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(int id1, int id2) {
     FINALCHECK("sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA:\n";);
     for (unsigned i=0; i<FA_left.size(); i++) {
         expr_ref_vector loops(m);
         for (unsigned j=0; j<FA_right.size(); j++) {
             if (can_be_a_valid_sync_loop(i, j))
-                loops.push_back(mk_PFA_loop_counter(mode, qid, i, j));
+                loops.push_back(mk_PFA_loop_counter(id1, id2, i, j));
         }
         expr_ref sum_loop(m_autil.mk_add(loops), m);
         add_axiom(mk_literal(m_autil.mk_eq(sum_loop.get(), FA_left.counters[i].get())));
@@ -663,7 +659,7 @@ void theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_t
         expr_ref_vector loops(m);
         for (unsigned i=0; i<FA_left.size(); i++) {
             if (can_be_a_valid_sync_loop(i, j))
-                loops.push_back(mk_PFA_loop_counter(mode, qid, i, j));
+                loops.push_back(mk_PFA_loop_counter(id1, id2, i, j));
         }
         expr_ref sum_loop(m_autil.mk_add(loops), m);
         add_axiom(mk_literal(m_autil.mk_eq(sum_loop.get(), FA_right.counters[j].get())));
@@ -693,51 +689,34 @@ bool theory_seq::flatten_equalities(int size) {
     FINALCHECK("Enter flatten_equalities\n";);
 
     bool change = false;
-    // for (auto const& eq: m_rep) {
-    //     if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
-    //         eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
-    //         if (!m_repids.contains(std::make_pair(eq.v->get_id() + eq.e->get_id(), std::abs((int)eq.v->get_id() - (int)eq.e->get_id())))) {
-    //             m_repids.push_back(std::make_pair(eq.v->get_id() + eq.e->get_id(), std::abs((int)eq.v->get_id() - (int)eq.e->get_id())));
-    //             expr_ref_vector lhs(m);
-    //             m_util.str.get_concat(eq.v, lhs);
-    //             from_word_term_to_FA(lhs, size, FA_left);
-    //             expr_ref_vector rhs(m);
-    //             m_util.str.get_concat(eq.e, rhs);
-    //             from_word_term_to_FA(rhs, size, FA_right);
+    for (auto const& eq: m_rep) {
+        if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
+            eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
+            if (!m_repids.contains(std::make_pair(eq.v->get_id() + eq.e->get_id(), std::abs((int)eq.v->get_id() - (int)eq.e->get_id())))) {
+                m_repids.push_back(std::make_pair(eq.v->get_id() + eq.e->get_id(), std::abs((int)eq.v->get_id() - (int)eq.e->get_id())));
+                is_under_approximation = true;
 
-    //             FINALCHECK("FA left = \n" << FA_left;);
-    //             FINALCHECK("FA right = \n" << FA_right;);
+                expr_ref_vector lhs(m);
+                m_util.str.get_concat(eq.v, lhs);
+                from_word_term_to_FA(lhs, size, FA_left);
+                expr_ref_vector rhs(m);
+                m_util.str.get_concat(eq.e, rhs);
+                from_word_term_to_FA(rhs, size, FA_right);
 
-    //             for (unsigned i = 0; i < FA_left.size(); i++) {
-    //                 for (unsigned j = 0; j < FA_right.size(); j++) {
-    //                     // 1st: for each possibly valid sync loop, the two characters on that loop must be the same.
-    //                     if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(3, eq.v->get_id() + eq.e->get_id(), i, j);
+                FINALCHECK("FA left = \n" << FA_left;);
+                FINALCHECK("FA right = \n" << FA_right;);
 
-    //                     // 2nd: only at most one in-coming edge of one state can be selected.
-    //                     only_at_most_one_incoming_edge_of_one_state_can_be_selected(3, eq.v->get_id() + eq.e->get_id(), i, j);
+                expr_ref_vector terms(lhs);
+                terms.append(rhs);
 
-    //                     // 3rd: only at most one out-going edge of one state can be selected.
-    //                     only_at_most_one_outgoing_edge_of_one_state_can_be_selected(3, eq.v->get_id() + eq.e->get_id(), i, j);
+                FINALCHECK("\n===================\n";);
 
-    //                     // 4th: selection of self edges or out-going edges implies selection of in-coming edges
-    //                     selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(3, eq.v->get_id() + eq.e->get_id(), i, j);
-    //                 }
-    //             }
+                add_from_FA_to_PFA_constraints((EQ+1) + eq.v->get_id() + eq.e->get_id(), std::abs((int)eq.v->get_id() - (int)eq.e->get_id()), terms, size);
 
-    //             // 5th: at least one in-coming edge of final state should be selected.
-    //             at_least_one_incoming_edge_of_final_state_should_be_selected(3, eq.v->get_id() + eq.e->get_id());
-
-    //             // 6th: sum of edges for a single loop on the PFA must be mapped back to the original FA.
-    //             sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(3, eq.v->get_id() + eq.e->get_id());
-
-    //             // 7th: len(x) == sum_i { len(x_i) * times(x_i) }
-    //             length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(lhs, size);
-    //             length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(rhs, size);
-
-    //             change = true;
-    //         }
-    //     }
-    // }
+                change = true;
+            }
+        }
+    }
     for (const auto &eq: m_eqs) {
         if (!m_flattened_eqids.contains(eq.id())) {
             m_flattened_eqids.push_back(eq.id());
@@ -820,43 +799,47 @@ bool theory_seq::check_parikh_image() {
     return change;
 }
 
+void theory_seq::print_term(const expr_ref_vector &term, int size) {
+    for (const auto &atom: term) {
+        int ch;
+        if ((ch = get_atom_const_char_unicode(atom)) >= 0) {
+            DISPLAYMODEL("(" << ch << ")";);
+        } else if (atom_is_unit_var(atom)) {
+            rational _unicode;
+            DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
+            if (!get_num_value(mk_FA_self_loop_char(atom, 0), _unicode))
+                SASSERT(false);
+            DISPLAYMODEL("(" << _unicode << ")]";);
+        } else {
+            rational _counter, _unicode;
+            DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
+            for (int i=0; i<size; i++) {
+                if (!get_num_value(mk_FA_self_loop_counter(atom, i), _counter))
+                    SASSERT(false);
+                if (!get_num_value(mk_FA_self_loop_char(atom, i), _unicode))
+                    SASSERT(false);
+                for (int j=0; j<_counter; j++) {
+                    DISPLAYMODEL("(" << _unicode << ")";);
+                }
+            }
+            DISPLAYMODEL("]";);
+        }
+    }
+}
+
 void theory_seq::print_model(int size) {
     final_check_status arith_fc_status = m_arith_value.final_check();
     if (arith_fc_status == FC_DONE) {
         for (const auto &eq: m_rep) {
             if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
                 eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
-                DISPLAYMODEL("(m_rep) =====================\n";);
+                DISPLAYMODEL("(m_rep) =============\n";);
                 int mode = 0;
                 for (const auto &t: {eq.v, eq.e}) {
                     DISPLAYMODEL((!mode ? "LHS: " : "RHS: "););// << mk_pp(t, m) << " == ";);
                     expr_ref_vector term(m);
                     m_util.str.get_concat(t, term);
-                    for (const auto &atom: term) {
-                        int ch;
-                        if ((ch = get_atom_const_char_unicode(atom)) >= 0) {
-                            DISPLAYMODEL("(" << ch << ")";);
-                        } else if (atom_is_unit_var(atom)) {
-                            rational _unicode;
-                            DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
-                            if (!get_num_value(mk_FA_self_loop_char(atom, 0), _unicode))
-                                SASSERT(false);
-                            DISPLAYMODEL("(" << _unicode << ")]";);
-                        } else {
-                            rational _counter, _unicode;
-                            DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
-                            for (int i=0; i<size; i++) {
-                                if (!get_num_value(mk_FA_self_loop_counter(atom, i), _counter))
-                                    SASSERT(false);
-                                if (!get_num_value(mk_FA_self_loop_char(atom, i), _unicode))
-                                    SASSERT(false);
-                                for (int j=0; j<_counter; j++) {
-                                    DISPLAYMODEL("(" << _unicode << ")";);
-                                }
-                            }
-                            DISPLAYMODEL("]";);
-                        }
-                    }
+                    print_term(term, size);
                     if (!mode) DISPLAYMODEL("\n==";);
                     mode++;
                     DISPLAYMODEL("\n";);
@@ -865,35 +848,11 @@ void theory_seq::print_model(int size) {
             }
         }
         for (const auto &eq: m_eqs) {
-            DISPLAYMODEL("(m_eqs) =====================\n";);
+            DISPLAYMODEL("(m_eqs) =============\n";);
             int mode = 0;
             for (const auto &term: {eq.ls, eq.rs}) {
                 DISPLAYMODEL((!mode ? "LHS: " : "RHS: "););
-                for (const auto &atom: term) {
-                    int ch;
-                    if ((ch = get_atom_const_char_unicode(atom)) >= 0) {
-                        DISPLAYMODEL("(" << ch << ")";);
-                    } else if (atom_is_unit_var(atom)) {
-                        rational _unicode;
-                        DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
-                        if (!get_num_value(mk_FA_self_loop_char(atom, 0), _unicode))
-                            SASSERT(false);
-                        DISPLAYMODEL("(" << _unicode << ")]";);
-                    } else {
-                        rational _counter, _unicode;
-                        DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
-                        for (int i=0; i<size; i++) {
-                            if (!get_num_value(mk_FA_self_loop_counter(atom, i), _counter))
-                                SASSERT(false);
-                            if (!get_num_value(mk_FA_self_loop_char(atom, i), _unicode))
-                                SASSERT(false);
-                            for (int j=0; j<_counter; j++) {
-                                DISPLAYMODEL("(" << _unicode << ")";);
-                            }
-                        }
-                        DISPLAYMODEL("]";);
-                    }
-                }
+                print_term(term, size);
                 if (!mode) DISPLAYMODEL("\n==";);
                 mode++;
                 DISPLAYMODEL("\n";);
@@ -901,79 +860,18 @@ void theory_seq::print_model(int size) {
             DISPLAYMODEL("=====================\n";);
         }
         for (const auto &nq: m_nqs) {
-            DISPLAYMODEL("(m_nqs) =====================\n";);
-            int mode = 0, index[][3] = {{PREFIX, DIFF_LHS, SUFFIX_LHS}, {PREFIX, DIFF_RHS, SUFFIX_RHS}};
+            DISPLAYMODEL("(m_nqs) =============\n";);
+            int mode = 0;
             for (const auto &t: {nq.l(), nq.r()}) {
                 DISPLAYMODEL((!mode ? "LHS: " : "RHS: "););// << mk_pp(t, m) << " == ";);
                 expr_ref_vector term(m);
                 m_util.str.get_concat(t.get(), term);
-                for (const auto &atom: term) {
-                    int ch;
-                    if ((ch = get_atom_const_char_unicode(atom)) >= 0) {
-                        DISPLAYMODEL("(" << ch << ")";);
-                    } else if (atom_is_unit_var(atom)) {
-                        rational _unicode;
-                        DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
-                        if (!get_num_value(mk_FA_self_loop_char(atom, 0), _unicode))
-                            SASSERT(false);
-                        DISPLAYMODEL("(" << _unicode << ")]";);
-                    } else {
-                        rational _counter, _unicode;
-                        DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
-                        for (int i=0; i<size; i++) {
-                            if (!get_num_value(mk_FA_self_loop_counter(atom, i), _counter))
-                                SASSERT(false);
-                            if (!get_num_value(mk_FA_self_loop_char(atom, i), _unicode))
-                                SASSERT(false);
-                            for (int j=0; j<_counter; j++) {
-                                DISPLAYMODEL("(" << _unicode << ")";);
-                            }
-                        }
-                        DISPLAYMODEL("]";);
-                    }
-                }
-                // DISPLAYMODEL(" == ";);
-                // rational _counter, _unicode;
-                // for (int part=0; part<3; part++) {
-                //     if (part == 1) {
-                //         if (!get_num_value(mk_nq_char(nq.m_id, index[mode][part], 0), _unicode))
-                //             SASSERT(false);
-                //         DISPLAYMODEL("(" << _unicode << ")";);
-                //     }
-                //     else
-                //         for (int p=0; p<size; p++) {
-                //             if (!get_num_value(mk_nq_counter(nq.m_id, index[mode][part], p), _counter))
-                //                 SASSERT(false);
-                //             if (!get_num_value(mk_nq_char(nq.m_id, index[mode][part], p), _unicode))
-                //                 SASSERT(false);
-                //             for (int j=0; j<_counter; j++) {
-                //                 DISPLAYMODEL("(" << _unicode << ")";);
-                //             }
-                //         }
-                // }
+                print_term(term, size);
                 if (!mode) DISPLAYMODEL("\n!=";);
                 mode++;
                 DISPLAYMODEL("\n";);
             }
             DISPLAYMODEL("=====================\n";);
-            // for (const auto &t: {nq.l(), nq.r()}) {
-            //     expr_ref_vector term(m);
-            //     m_util.str.get_concat(t.get(), term);
-            //     for (const auto &atom: term) {
-            //         if (get_atom_const_char_unicode(atom) < 0) {
-            //             rational _counter, _unicode;
-            //             DISPLAYMODEL("[" << mk_pp(atom, m) << "] ==> ";);
-            //             for (int i=0; i<size; i++) {
-            //                 get_num_value(mk_FA_self_loop_counter(atom, i), _counter);
-            //                 get_num_value(mk_FA_self_loop_char(atom, i), _unicode);
-            //                 for (int j=0; j<_counter; j++) {
-            //                     DISPLAYMODEL(_unicode;);
-            //                 }
-            //             }
-            //             DISPLAYMODEL("\n";);
-            //         }
-            //     }
-            // }
         }
     }
 }
@@ -1092,17 +990,17 @@ final_check_status theory_seq::final_check_eh() {
 //         return FC_CONTINUE;
 //     }
 
-    if (flatten_equalities(7)) {
+    if (flatten_equalities(8)) {
         TRACE("seq", tout << "flatten_equalities\n";);
         return FC_CONTINUE;
     }
 
-    if (handle_disequalities(7)) {
+    if (handle_disequalities(8)) {
         TRACE("seq", tout << "handle_disequalities\n";);
         return FC_CONTINUE;
     }
 
-    print_model(7);
+    print_model(8);
 
     if (m_unhandled_expr) {
         TRACEFIN("give_up");

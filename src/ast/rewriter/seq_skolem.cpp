@@ -219,15 +219,15 @@ expr_ref skolem::mk_FA_self_loop_counter(expr *var, unsigned i) {
         a.mk_int()), m);
 }
 
-expr_ref skolem::mk_PFA_loop_counter(int mode, unsigned qid, unsigned i, unsigned j) {
+expr_ref skolem::mk_PFA_loop_counter(int id1, int id2, unsigned i, unsigned j) {
     return expr_ref(seq.mk_skolem(symbol("seq.pfa_loop_counter"), 4,
-        std::initializer_list<expr*>({a.mk_int(mode), a.mk_int(qid), a.mk_int(i), a.mk_int(j)}).begin(),
+        std::initializer_list<expr*>({a.mk_int(id1), a.mk_int(id2), a.mk_int(i), a.mk_int(j)}).begin(),
         a.mk_int()), m);
 }
 
-expr_ref skolem::mk_PFA_edge_selection(int mode, unsigned qid, const std::pair<int, int> &state1, const std::pair<int, int> &state2) {
+expr_ref skolem::mk_PFA_edge_selection(int id1, int id2, const std::pair<int, int> &state1, const std::pair<int, int> &state2) {
     return expr_ref(seq.mk_skolem(symbol("seq.pfa_edge_selection"), 6,
-        std::initializer_list<expr*>({a.mk_int(mode), a.mk_int(qid), a.mk_int(state1.first), a.mk_int(state1.second), a.mk_int(state2.first), a.mk_int(state2.second)}).begin(),
+        std::initializer_list<expr*>({a.mk_int(id1), a.mk_int(id2), a.mk_int(state1.first), a.mk_int(state1.second), a.mk_int(state2.first), a.mk_int(state2.second)}).begin(),
         m.mk_bool_sort()), m);
 }
 

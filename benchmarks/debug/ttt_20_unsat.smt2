@@ -1,0 +1,10 @@
+(declare-fun e () String)
+(declare-fun h () String)
+(declare-fun a () String)
+(declare-fun f () String)
+(declare-fun c () String)
+(assert (= (str.++ e a "ff" h h) "fbf"))
+(assert (not (= (str.++ "g" f) c)))
+(assert (not (= (str.++ e "a") (str.++ f "h"))))
+
+(check-sat)
