@@ -231,14 +231,8 @@ expr_ref skolem::mk_PFA_edge_selection(int mode, unsigned qid, const std::pair<i
         m.mk_bool_sort()), m);
 }
 
-expr_ref skolem::mk_nq_char(unsigned nqid, int part, int i) {
-    return expr_ref(seq.mk_skolem(symbol("seq.nq_char"), 3,
-        std::initializer_list<expr*>({a.mk_int(nqid), a.mk_int(part), a.mk_int(i)}).begin(),
-        a.mk_int()), m);
-}
-
-expr_ref skolem::mk_nq_counter(unsigned nqid, int part, int i) {
-    return expr_ref(seq.mk_skolem(symbol("seq.nq_counter"), 3,
-        std::initializer_list<expr*>({a.mk_int(nqid), a.mk_int(part), a.mk_int(i)}).begin(),
-        a.mk_int()), m);
+expr_ref skolem::mk_nq_string(unsigned nqid, int part) {
+    return expr_ref(seq.mk_skolem(symbol("seq.nq_string"), 2,
+        std::initializer_list<expr*>({a.mk_int(nqid), a.mk_int(part)}).begin(),
+        seq.mk_string_sort()), m); //a.mk_int()), m);
 }

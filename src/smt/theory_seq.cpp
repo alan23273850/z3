@@ -443,30 +443,32 @@ bool theory_seq::handle_disequalities(int size) {
             nq.m_id = ++m_nq_id;
             m_nqids.push_back(nq.m_id);
 
-            /***************************************** LHS *****************************************/
-            expr_ref_vector lhs(m);
-            m_util.str.get_concat_units(nq.l(), lhs);
-            from_word_term_to_FA(lhs, size, FA_left);
-            from_nq_bridge_to_FA(nq.m_id, DISEQ_LHS, size, FA_right);
-            add_from_FA_to_PFA_constraints(DISEQ_LHS, nq.m_id, lhs, size);
-            /***************************************************************************************/
+            // Case 1: unit_var(LHS) != unit_var(RHS)
+            rational length1, length2;
+            if (get_num_value(mk_len(nq.l().get()).get(), length1) && get_num_value(mk_len(nq.r().get()).get(), length2) && length1==1 && length2==1) {
+                add_axiom(mk_literal(m.mk_not(m_autil.mk_eq(m_sk.mk_FA_self_loop_char(nq.l().get(), 0).get(), m_sk.mk_FA_self_loop_char(nq.r().get(), 0).get()))));
+            } else {
+                // Case 2: len(LHS) != len(RHS)
+                expr_ref diff_length(m.mk_not(m_autil.mk_eq(mk_len(nq.l().get()).get(), mk_len(nq.r().get()).get())), m);
 
-            /***************************************** RHS *****************************************/
-            expr_ref_vector rhs(m);
-            m_util.str.get_concat_units(nq.r(), rhs);
-            from_word_term_to_FA(rhs, size, FA_left);
-            from_nq_bridge_to_FA(nq.m_id, DISEQ_RHS, size, FA_right);
-            add_from_FA_to_PFA_constraints(DISEQ_RHS, nq.m_id, rhs, size);
-            /***************************************************************************************/
+                // Case 3: len(LHS) == len(RHS) and
+                //         LHS = prefix + unit_var(diff(LHS)) + suffix(LHS)
+                //         RHS = prefix + unit_var(diff(RHS)) + suffix(RHS)
+                //         unit_var(diff(LHS)) != unit_var(diff(RHS))
+                expr_ref diff_lhs(m_sk.mk_nq_string(nq.m_id, DIFF_LHS), m);
+                expr_ref diff_rhs(m_sk.mk_nq_string(nq.m_id, DIFF_RHS), m);
+                expr_ref diff_char(m.mk_and(5, std::initializer_list<expr*>({
+                                            m_sk.mk_eq(nq.l().get(), mk_concat(m_sk.mk_nq_string(nq.m_id, PREFIX).get(), diff_lhs.get(), m_sk.mk_nq_string(nq.m_id, SUFFIX_LHS)).get()).get(),
+                                            m_sk.mk_eq(nq.r().get(), mk_concat(m_sk.mk_nq_string(nq.m_id, PREFIX).get(), diff_rhs.get(), m_sk.mk_nq_string(nq.m_id, SUFFIX_RHS)).get()).get(),
+                                            m_autil.mk_eq(mk_len(diff_lhs.get()).get(), m_autil.mk_int(1)),
+                                            m_autil.mk_eq(mk_len(diff_rhs.get()).get(), m_autil.mk_int(1)),
+                                            m.mk_not(m_sk.mk_eq(diff_lhs.get(), diff_rhs.get()).get())}).begin()),
+                                   m);
 
-            /**************************** diff length or diff character ****************************/
-            expr_ref diff_length(m.mk_not(m_autil.mk_eq(mk_len(nq.l()).get(), mk_len(nq.r()).get())), m);
-            expr_ref diff_char(m.mk_and(m_autil.mk_eq(mk_nq_counter(nq.m_id, DIFF_LHS, 0).get(), mk_nq_counter(nq.m_id, DIFF_RHS, 0).get()),
-                                        m_autil.mk_eq(mk_nq_counter(nq.m_id, DIFF_LHS, 0).get(), m_autil.mk_int(1)),
-                                        m.mk_not(m_autil.mk_eq(mk_nq_char(nq.m_id, DIFF_LHS, 0).get(), mk_nq_char(nq.m_id, DIFF_RHS, 0).get()))), m);
-            add_axiom(mk_literal(diff_length.get()), mk_literal(diff_char.get()));
-            FINALCHECK("diff_length_or_diff_character:\n";);
-            FINALCHECK(mk_pp(diff_length.get(), m) << " or " << mk_pp(diff_char.get(), m) << "\n";);
+                add_axiom(mk_literal(diff_length.get()), mk_literal(diff_char.get()));
+                FINALCHECK("diff_length_or_diff_character:\n";);
+                FINALCHECK(mk_pp(diff_length.get(), m) << " or " << mk_pp(diff_char.get(), m) << "\n";);
+            }
             /***************************************************************************************/
             change = true;
         }
@@ -497,16 +499,6 @@ expr_ref theory_seq::mk_PFA_loop_counter(int mode, unsigned qid, unsigned i, uns
 expr_ref theory_seq::mk_PFA_edge_selection(int mode, unsigned qid, const std::pair<int, int> &state1, const std::pair<int, int> &state2) {
     expr_ref result = m_sk.mk_PFA_edge_selection(mode, qid, state1, state2);
     return result; // boolean types don't need >=0 wrapper.
-}
-expr_ref theory_seq::mk_nq_char(unsigned nqid, int part, int i) {
-    expr_ref result = m_sk.mk_nq_char(nqid, part, i);
-    add_axiom(mk_literal(m_autil.mk_ge(result.get(), m_autil.mk_int(0))));
-    return result;
-}
-expr_ref theory_seq::mk_nq_counter(unsigned nqid, int part, int i) {
-    expr_ref result = m_sk.mk_nq_counter(nqid, part, i);
-    add_axiom(mk_literal(m_autil.mk_ge(result.get(), m_autil.mk_int(0))));
-    return result;
 }
 
 bool theory_seq::atom_is_unit_var(expr *const e) {
@@ -576,21 +568,6 @@ void theory_seq::from_word_term_to_FA(const expr_ref_vector &term, int p, struct
     if (!FA.size()) {
         FA.characters.push_back(m_autil.mk_int(0));
         FA.counters.push_back(m_autil.mk_int(0));
-    }
-}
-
-void theory_seq::from_nq_bridge_to_FA(int nqid, int mode, int p, struct FA &FA) {
-    int index[][3] = {{PREFIX, DIFF_LHS, SUFFIX_LHS}, {PREFIX, DIFF_RHS, SUFFIX_RHS}};
-    FA.clear(); mode--;
-    for (int i=0; i<p; i++) {
-        FA.characters.push_back(mk_nq_char(nqid, index[mode][0], i));
-        FA.counters.push_back(mk_nq_counter(nqid, index[mode][0], i));
-    }
-    FA.characters.push_back(mk_nq_char(nqid, index[mode][1], 0));
-    FA.counters.push_back(mk_nq_counter(nqid, index[mode][1], 0));
-    for (int i=0; i<p; i++) {
-        FA.characters.push_back(mk_nq_char(nqid, index[mode][2], i));
-        FA.counters.push_back(mk_nq_counter(nqid, index[mode][2], i));
     }
 }
 

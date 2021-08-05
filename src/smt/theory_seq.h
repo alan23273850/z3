@@ -498,15 +498,12 @@ namespace smt {
         expr_ref mk_FA_self_loop_counter(expr *var, unsigned i);
         expr_ref mk_PFA_loop_counter(int mode, unsigned qid, unsigned i, unsigned j);
         expr_ref mk_PFA_edge_selection(int mode, unsigned qid, const std::pair<int, int> &state1, const std::pair<int, int> &state2);
-        expr_ref mk_nq_char(unsigned nqid, int part, int i);
-        expr_ref mk_nq_counter(unsigned nqid, int part, int i);
 
         void add_from_FA_to_PFA_constraints(int mode, unsigned qid, const expr_ref_vector &term, int size);
 
         struct FA FA_left, FA_right;
         bool can_be_a_valid_sync_loop(unsigned i, unsigned j);
         void from_word_term_to_FA(const expr_ref_vector &term, int p, struct FA &FA);
-        void from_nq_bridge_to_FA(int nqid, int mode, int p, struct FA &FA);
         void if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(int mode, unsigned qid, int i, int j);
         void only_at_most_one_incoming_edge_of_one_state_can_be_selected(int mode, unsigned qid, int i, int j);
         void only_at_most_one_outgoing_edge_of_one_state_can_be_selected(int mode, unsigned qid, unsigned i, unsigned j);
