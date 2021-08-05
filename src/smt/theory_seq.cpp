@@ -1092,13 +1092,13 @@ final_check_status theory_seq::final_check_eh() {
 //         return FC_CONTINUE;
 //     }
 
-    if (handle_disequalities(7)) {
-        TRACE("seq", tout << "handle_disequalities\n";);
+    if (flatten_equalities(7)) {
+        TRACE("seq", tout << "flatten_equalities\n";);
         return FC_CONTINUE;
     }
 
-    if (flatten_equalities(7)) {
-        TRACE("seq", tout << "flatten_equalities\n";);
+    if (handle_disequalities(7)) {
+        TRACE("seq", tout << "handle_disequalities\n";);
         return FC_CONTINUE;
     }
 
