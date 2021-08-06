@@ -420,6 +420,16 @@ void theory_seq::print_formulas(zstring msg){
         print_terms(terms);
         FINALCHECK("\n";);
     }
+//    for(auto const& dis:m_exclude){
+//        expr_ref_vector terms(m);
+//        m_util.str.get_concat_units(dis.first, terms);
+//        print_terms(terms);
+//        FINALCHECK(" != ";);
+//        terms.reset();
+//        m_util.str.get_concat_units(dis.second, terms);
+//        print_terms(terms);
+//        FINALCHECK("\n";);
+//    }
 
     if(!m_ncs.empty()) FINALCHECK("Not Contains:\n";);
     for (auto const & nc:m_ncs){
@@ -442,13 +452,23 @@ bool theory_seq::handle_disequalities(int size) {
         if (!m_nqids.contains(nq.m_id)) {
             nq.m_id = ++m_nq_id;
             m_nqids.push_back(nq.m_id);
+            FINALCHECK(mk_pp(nq.l(),m)<<"!="<<mk_pp(nq.r(),m)<<" #"<<nq.m_id<<"\n";);
 
             // Case 1: unit_var(LHS) != unit_var(RHS)
             rational length1, length2;
-            if (get_num_value(mk_len(nq.l().get()).get(), length1) && get_num_value(mk_len(nq.r().get()).get(), length2) && length1==1 && length2==1) {
+            if ( !m_util.str.is_concat(nq.l()) &&
+                 !m_util.str.is_concat(nq.r()) &&
+                 get_num_value(mk_len(nq.l()), length1) &&
+                 get_num_value(mk_len(nq.r()), length2) &&
+                 length1==1 && length2==1
+                ) {
+
+                FINALCHECK("case 1: "<<mk_pp(nq.l(),m)<<"!="<<mk_pp(nq.r(),m)<<"\n";);
                 add_axiom(mk_literal(m.mk_not(m_autil.mk_eq(m_sk.mk_FA_self_loop_char(nq.l().get(), 0).get(), m_sk.mk_FA_self_loop_char(nq.r().get(), 0).get()))));
             } else {
                 // Case 2: len(LHS) != len(RHS)
+                FINALCHECK("case 2: "<<mk_pp(nq.l(),m)<<"!="<<mk_pp(nq.r(),m)<<"\n";);
+
                 expr_ref diff_length(m.mk_not(m_autil.mk_eq(mk_len(nq.l().get()).get(), mk_len(nq.r().get()).get())), m);
 
                 // Case 3: len(LHS) == len(RHS) and
@@ -458,14 +478,16 @@ bool theory_seq::handle_disequalities(int size) {
                 expr_ref diff_lhs(m_sk.mk_nq_string(nq.m_id, DIFF_LHS), m);
                 expr_ref diff_rhs(m_sk.mk_nq_string(nq.m_id, DIFF_RHS), m);
                 expr_ref diff_char(m.mk_and(5, std::initializer_list<expr*>({
-                                            m_sk.mk_eq(nq.l().get(), mk_concat(m_sk.mk_nq_string(nq.m_id, PREFIX).get(), diff_lhs.get(), m_sk.mk_nq_string(nq.m_id, SUFFIX_LHS)).get()).get(),
-                                            m_sk.mk_eq(nq.r().get(), mk_concat(m_sk.mk_nq_string(nq.m_id, PREFIX).get(), diff_rhs.get(), m_sk.mk_nq_string(nq.m_id, SUFFIX_RHS)).get()).get(),
-                                            m_autil.mk_eq(mk_len(diff_lhs.get()).get(), m_autil.mk_int(1)),
-                                            m_autil.mk_eq(mk_len(diff_rhs.get()).get(), m_autil.mk_int(1)),
-                                            m.mk_not(m_sk.mk_eq(diff_lhs.get(), diff_rhs.get()).get())}).begin()),
+                                            m_sk.mk_eq(nq.l(), mk_concat(m_sk.mk_nq_string(nq.m_id, PREFIX), diff_lhs, m_sk.mk_nq_string(nq.m_id, SUFFIX_LHS))),
+                                            m_sk.mk_eq(nq.r(), mk_concat(m_sk.mk_nq_string(nq.m_id, PREFIX), diff_rhs, m_sk.mk_nq_string(nq.m_id, SUFFIX_RHS))),
+                                            m_autil.mk_eq(mk_len(diff_lhs.get()), m_autil.mk_int(1)),
+                                            m_autil.mk_eq(mk_len(diff_rhs.get()), m_autil.mk_int(1)),
+                                            m.mk_not(m.mk_eq(diff_lhs, diff_rhs))}).begin()),
                                    m);
 
-                add_axiom(mk_literal(diff_length.get()), mk_literal(diff_char.get()));
+                add_axiom(mk_literal(diff_length), mk_literal(diff_char));
+
+
                 FINALCHECK("diff_length_or_diff_character:\n";);
                 FINALCHECK(mk_pp(diff_length.get(), m) << " or " << mk_pp(diff_char.get(), m) << "\n";);
             }
@@ -3594,6 +3616,7 @@ void theory_seq::new_diseq_eh(theory_var v1, theory_var v2) {
     enode* n2 = get_enode(v2);    
     expr_ref e1(n1->get_expr(), m);
     expr_ref e2(n2->get_expr(), m);
+
     if (n1->get_root() == n2->get_root())
         return;
     if (m_util.is_re(n1->get_expr())) {        
