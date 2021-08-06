@@ -464,6 +464,7 @@ bool theory_seq::handle_disequalities(int size) {
                 ) {
 
                 FINALCHECK("case 1: "<<mk_pp(nq.l(),m)<<"!="<<mk_pp(nq.r(),m)<<"\n";);
+
                 add_axiom(mk_literal(m.mk_not(m_autil.mk_eq(m_sk.mk_FA_self_loop_char(nq.l(), 0), m_sk.mk_FA_self_loop_char(nq.r(), 0)))));
             } else {
                 // Case 2: len(LHS) != len(RHS)
@@ -822,6 +823,7 @@ bool theory_seq::check_parikh_image() {
 }
 
 void theory_seq::print_term(const expr_ref_vector &term, int size) {
+
     for (const auto &atom: term) {
         int ch;
         if ((ch = get_atom_const_char_unicode(atom)) >= 0) {
@@ -909,8 +911,12 @@ final_check_status theory_seq::final_check_eh() {
         return FC_DONE;
     }
 
+    expr_ref_vector assignments(m);
+    if (is_debug_enabled("fc")) ctx.display_assignment(std::cout);
+
+
     int segment_size = 8;
-    if (is_debug_enabled("fc")) segment_size = 1 ;
+    if (is_debug_enabled("fc")) segment_size = 2 ;
     m_new_propagation = false;
     TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
     TRACE("seq_verbose", ctx.display(tout););
@@ -1112,7 +1118,7 @@ bool theory_seq::fixed_length(expr* len_e, bool is_zero) {
     }
     else if (!is_zero) {
         unsigned _lo = lo.get_unsigned();
-        expr_ref_vector elems(m);        
+        expr_ref_vector elems(m);
         for (unsigned j = 0; j < _lo; ++j) {
             m_sk.decompose(seq, head, tail);
             elems.push_back(head);
