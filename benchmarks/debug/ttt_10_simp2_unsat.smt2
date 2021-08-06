@@ -1,0 +1,5 @@
+(declare-fun a () String)
+(declare-fun c () String)
+(assert (not (= a c)))
+(assert (= (str.len a) (str.len c)))
+(check-sat)
