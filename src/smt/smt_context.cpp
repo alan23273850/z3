@@ -1794,7 +1794,6 @@ namespace smt {
             }});
 
         m_stats.m_num_decisions++;
-
         push_scope();
         TRACE("decide", tout << "splitting, lvl: " << m_scope_lvl << "\n";);
 

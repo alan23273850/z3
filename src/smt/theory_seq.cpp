@@ -703,8 +703,8 @@ bool theory_seq::flatten_equalities(int size) {
                 m_util.str.get_concat(eq.e, rhs);
                 from_word_term_to_FA(rhs, size, FA_right);
 
-                FINALCHECK("FA left = \n" << FA_left;);
-                FINALCHECK("FA right = \n" << FA_right;);
+                FINALCHECK("FA left: " << FA_left;);
+                FINALCHECK("\n\nFA right: " << FA_right;);
 
                 expr_ref_vector terms(lhs);
                 terms.append(rhs);
@@ -887,6 +887,8 @@ final_check_status theory_seq::final_check_eh() {
         return FC_DONE;
     }
 
+    int segment_size = 8;
+    if (is_debug_enabled("fc")) segment_size = 1 ;
     m_new_propagation = false;
     TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
     TRACE("seq_verbose", ctx.display(tout););
@@ -990,17 +992,17 @@ final_check_status theory_seq::final_check_eh() {
 //         return FC_CONTINUE;
 //     }
 
-    if (flatten_equalities(8)) {
+    if (flatten_equalities(segment_size)) {
         TRACE("seq", tout << "flatten_equalities\n";);
         return FC_CONTINUE;
     }
 
-    if (handle_disequalities(8)) {
+    if (handle_disequalities(segment_size)) {
         TRACE("seq", tout << "handle_disequalities\n";);
         return FC_CONTINUE;
     }
 
-    print_model(8);
+    print_model(segment_size);
 
     if (m_unhandled_expr) {
         TRACEFIN("give_up");
