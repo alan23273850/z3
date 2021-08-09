@@ -452,46 +452,32 @@ bool theory_seq::handle_disequalities(int size) {
         const auto id_pair = std::make_pair(nq.l().get()->get_id() + nq.r().get()->get_id(), std::abs((int)nq.l().get()->get_id() - (int)nq.r().get()->get_id()));
         if (!m_nqids.contains(id_pair)) {
             m_nqids.push_back(id_pair);
-            FINALCHECK(mk_pp(nq.l(),m)<<"!="<<mk_pp(nq.r(),m)<<" #"<<nq.m_id<<"\n";);
+            FINALCHECK(mk_pp(nq.l(),m)<<"!="<<mk_pp(nq.r(),m)<<" #("<<id_pair.first<<","<<id_pair.second<<")\n";);
 
-            // Case 1: unit_var(LHS) != unit_var(RHS)
-            rational length1, length2;
-            if ( !m_util.str.is_concat(nq.l()) &&
-                 !m_util.str.is_concat(nq.r()) &&
-                 get_num_value(mk_len(nq.l()), length1) &&
-                 get_num_value(mk_len(nq.r()), length2) &&
-                 length1==1 && length2==1
-                ) {
+            // Case 1: len(LHS) != len(RHS)
+            FINALCHECK("case 1: "<<mk_pp(nq.l(),m)<<"!="<<mk_pp(nq.r(),m)<<"\n";);
+            expr_ref diff_length(m.mk_not(m_autil.mk_eq(mk_len(nq.l()), mk_len(nq.r()))), m);
 
-                FINALCHECK("case 1: "<<mk_pp(nq.l(),m)<<"!="<<mk_pp(nq.r(),m)<<"\n";);
+            // Case 2: len(LHS) == len(RHS) and
+            //         LHS = prefix + unit_var(diff(LHS)) + suffix(LHS)
+            //         RHS = prefix + unit_var(diff(RHS)) + suffix(RHS)
+            //         unit_var(diff(LHS)) != unit_var(diff(RHS))
+            expr_ref diff_lhs(m_sk.mk_nq_string(id_pair, DIFF_LHS), m);
+            expr_ref diff_rhs(m_sk.mk_nq_string(id_pair, DIFF_RHS), m);
+            expr_ref diff_char(m.mk_and(7, std::initializer_list<expr*>({
+                                        m.mk_eq(nq.l(), mk_concat(m_sk.mk_nq_string(id_pair, PREFIX), diff_lhs, m_sk.mk_nq_string(id_pair, SUFFIX_LHS))),
+                                        m.mk_eq(nq.r(), mk_concat(m_sk.mk_nq_string(id_pair, PREFIX), diff_rhs, m_sk.mk_nq_string(id_pair, SUFFIX_RHS))),
+                                        m_autil.mk_eq(m_sk.mk_FA_self_loop_counter(diff_lhs, 0), m_autil.mk_int(1)),
+                                        m_autil.mk_eq(m_sk.mk_FA_self_loop_counter(diff_rhs, 0), m_autil.mk_int(1)),
+                                        m_autil.mk_eq(mk_len(diff_lhs), m_autil.mk_int(1)),
+                                        m_autil.mk_eq(mk_len(diff_rhs), m_autil.mk_int(1)),
+                                        m.mk_not(m_autil.mk_eq(m_sk.mk_FA_self_loop_char(diff_lhs, 0), m_sk.mk_FA_self_loop_char(diff_rhs, 0)))}).begin()),
+                            m);
 
-                add_axiom(mk_literal(m.mk_not(m_autil.mk_eq(m_sk.mk_FA_self_loop_char(nq.l(), 0), m_sk.mk_FA_self_loop_char(nq.r(), 0)))));
-            } else {
-                // Case 2: len(LHS) != len(RHS)
-                FINALCHECK("case 2: "<<mk_pp(nq.l(),m)<<"!="<<mk_pp(nq.r(),m)<<"\n";);
+            add_axiom(mk_literal(diff_length), mk_literal(diff_char));
 
-                expr_ref diff_length(m.mk_not(m_autil.mk_eq(mk_len(nq.l()), mk_len(nq.r()))), m);
-
-                // Case 3: len(LHS) == len(RHS) and
-                //         LHS = prefix + unit_var(diff(LHS)) + suffix(LHS)
-                //         RHS = prefix + unit_var(diff(RHS)) + suffix(RHS)
-                //         unit_var(diff(LHS)) != unit_var(diff(RHS))
-                expr_ref diff_lhs(m_sk.mk_nq_string(id_pair, DIFF_LHS), m);
-                expr_ref diff_rhs(m_sk.mk_nq_string(id_pair, DIFF_RHS), m);
-                expr_ref diff_char(m.mk_and(5, std::initializer_list<expr*>({
-                                            m.mk_eq(nq.l(), mk_concat(m_sk.mk_nq_string(id_pair, PREFIX), diff_lhs, m_sk.mk_nq_string(id_pair, SUFFIX_LHS))),
-                                            m.mk_eq(nq.r(), mk_concat(m_sk.mk_nq_string(id_pair, PREFIX), diff_rhs, m_sk.mk_nq_string(id_pair, SUFFIX_RHS))),
-                                            m_autil.mk_eq(mk_len(diff_lhs), m_autil.mk_int(1)),
-                                            m_autil.mk_eq(mk_len(diff_rhs), m_autil.mk_int(1)),
-                                            m.mk_not(m.mk_eq(diff_lhs, diff_rhs))}).begin()),
-                                   m);
-
-                add_axiom(mk_literal(diff_length), mk_literal(diff_char));
-
-
-                FINALCHECK("diff_length_or_diff_character:\n";);
-                FINALCHECK(mk_pp(diff_length, m) << " or " << mk_pp(diff_char, m) << "\n";);
-            }
+            FINALCHECK("diff_length_or_diff_character:\n";);
+            FINALCHECK(mk_pp(diff_length, m) << " or " << mk_pp(diff_char, m) << "\n";);
             /***************************************************************************************/
             change = true;
         }
