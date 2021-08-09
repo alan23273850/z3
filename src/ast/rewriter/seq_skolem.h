@@ -103,7 +103,7 @@ namespace seq {
         expr_ref mk_FA_self_loop_counter(expr *var, unsigned i);
         expr_ref mk_PFA_loop_counter(int id1, int id2, unsigned i, unsigned j);
         expr_ref mk_PFA_edge_selection(int id1, int id2, const std::pair<int, int> &state1, const std::pair<int, int> &state2);
-        expr_ref mk_nq_string(unsigned nqid, int part);
+        expr_ref mk_nq_string(const std::pair<int, int> &id, int part);
         
         bool is_skolem(symbol const& s, expr const* e) const;
         bool is_skolem(expr const* e) const { return seq.is_skolem(e); }

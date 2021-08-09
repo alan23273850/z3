@@ -449,9 +449,9 @@ bool theory_seq::handle_disequalities(int size) {
     bool change = false;
     for (unsigned i=0; i<m_nqs.size(); i++) {
         ne &nq = m_nqs.ref(i);
-        if (!m_nqids.contains(nq.m_id)) {
-            nq.m_id = ++m_nq_id;
-            m_nqids.push_back(nq.m_id);
+        const auto id_pair = std::make_pair(nq.l().get()->get_id() + nq.r().get()->get_id(), std::abs((int)nq.l().get()->get_id() - (int)nq.r().get()->get_id()));
+        if (!m_nqids.contains(id_pair)) {
+            m_nqids.push_back(id_pair);
             FINALCHECK(mk_pp(nq.l(),m)<<"!="<<mk_pp(nq.r(),m)<<" #"<<nq.m_id<<"\n";);
 
             // Case 1: unit_var(LHS) != unit_var(RHS)
@@ -475,11 +475,11 @@ bool theory_seq::handle_disequalities(int size) {
                 //         LHS = prefix + unit_var(diff(LHS)) + suffix(LHS)
                 //         RHS = prefix + unit_var(diff(RHS)) + suffix(RHS)
                 //         unit_var(diff(LHS)) != unit_var(diff(RHS))
-                expr_ref diff_lhs(m_sk.mk_nq_string(nq.m_id, DIFF_LHS), m);
-                expr_ref diff_rhs(m_sk.mk_nq_string(nq.m_id, DIFF_RHS), m);
+                expr_ref diff_lhs(m_sk.mk_nq_string(id_pair, DIFF_LHS), m);
+                expr_ref diff_rhs(m_sk.mk_nq_string(id_pair, DIFF_RHS), m);
                 expr_ref diff_char(m.mk_and(5, std::initializer_list<expr*>({
-                                            m.mk_eq(nq.l(), mk_concat(m_sk.mk_nq_string(nq.m_id, PREFIX), diff_lhs, m_sk.mk_nq_string(nq.m_id, SUFFIX_LHS))),
-                                            m.mk_eq(nq.r(), mk_concat(m_sk.mk_nq_string(nq.m_id, PREFIX), diff_rhs, m_sk.mk_nq_string(nq.m_id, SUFFIX_RHS))),
+                                            m.mk_eq(nq.l(), mk_concat(m_sk.mk_nq_string(id_pair, PREFIX), diff_lhs, m_sk.mk_nq_string(id_pair, SUFFIX_LHS))),
+                                            m.mk_eq(nq.r(), mk_concat(m_sk.mk_nq_string(id_pair, PREFIX), diff_rhs, m_sk.mk_nq_string(id_pair, SUFFIX_RHS))),
                                             m_autil.mk_eq(mk_len(diff_lhs), m_autil.mk_int(1)),
                                             m_autil.mk_eq(mk_len(diff_rhs), m_autil.mk_int(1)),
                                             m.mk_not(m.mk_eq(diff_lhs, diff_rhs))}).begin()),

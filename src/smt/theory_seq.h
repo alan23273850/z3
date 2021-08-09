@@ -187,7 +187,6 @@ namespace smt {
                     expr_ref_vector ls(l.get_manager()); ls.push_back(l);
                     expr_ref_vector rs(r.get_manager()); rs.push_back(r);
                     m_eqs.push_back(std::make_pair(ls, rs));
-                    m_id = 0;
                 }
 
             ne(expr_ref const& _l, expr_ref const& _r, vector<decomposed_eq> const& eqs, literal_vector const& lits, dependency* dep):
@@ -195,7 +194,6 @@ namespace smt {
                 m_eqs(eqs),
                 m_lits(lits),
                 m_dep(dep) {
-                    m_id = 0;
                 }
 
             vector<decomposed_eq> const& eqs() const { return m_eqs; }
@@ -347,7 +345,7 @@ namespace smt {
         scoped_vector<depeq>       m_eqs;        // set of current equations.
         scoped_vector<unsigned>    m_eqids_pkh;  // set of current equations not processed by check_parikh_image
         scoped_vector<unsigned>    m_chars_pkh;  // set of characters to be used by check_parikh_image
-        scoped_vector<unsigned>    m_nqids;      // set of current word disequality ids not processed yet
+        scoped_vector<std::pair<unsigned, unsigned>> m_nqids;   // set of current word disequality ids not processed yet
         scoped_vector<unsigned>    m_flattened_eqids;  // set of flattened word equation ids
         scoped_vector<std::pair<unsigned, unsigned>> m_repids;  // set of flattened word equation ids
         scoped_vector<ne>          m_nqs;        // set of current disequalities.
@@ -357,7 +355,6 @@ namespace smt {
         scoped_vector<expr*>       m_lts;        // set of asserted str.<, str.<= literals
         bool                       m_lts_checked; 
         unsigned                   m_eq_id;
-        unsigned                   m_nq_id;
         th_union_find              m_find;
         seq_offset_eq              m_offset_eq;
 
