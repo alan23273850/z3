@@ -3905,6 +3905,8 @@ namespace smt {
             std::cout.flush();
         }
 
+
+
         m_stats.m_num_final_checks++;
         TRACE("final_check_stats", tout << "m_stats.m_num_final_checks = " << m_stats.m_num_final_checks << "\n";);
 
