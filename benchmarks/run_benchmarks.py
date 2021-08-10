@@ -19,13 +19,13 @@ if args.mode == '1':
     data = list(os.walk('debug')) + list(os.walk('handmade')) + list(os.walk('sample_50'))
 elif args.mode == '2':
     args.mode = 'large'
-    data = list(os.walk('trauc'))
+    data = os.walk('trauc')
 elif args.mode == '3':
     args.mode = 'random'
-    data = list(os.walk('random_word_equation_1000'))
+    data = os.walk('random_word_equation_1000')
 elif args.mode == '4':
     args.mode = 'debug'
-    data = list(os.walk('debug'))
+    data = os.walk('debug')
 
 with open(f"statistics/{args.message}_{args.mode}.csv", 'w', buffering=1) as f:
     # print('filename,z3-time,z3-res,cvc4-time,cvc4-res,trau-time,trau-res,trau-msg,final', file=f)
