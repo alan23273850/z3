@@ -309,7 +309,7 @@ void theory_seq::init() {
 }
 
 #define TRACEFIN(s) { TRACE("seq", tout << ">>" << s << "\n";); IF_VERBOSE(20, verbose_stream() << s << "\n"); }
-#define FINALCHECK(STREAM) { if (is_debug_enabled("fc")) { std::cout << STREAM } }
+#define DEBUG(TYPE, STREAM) { if (is_debug_enabled(TYPE)) { std::cout << STREAM } }
 #define DISPLAYMODEL(STREAM) { if (is_debug_enabled("model")) { std::cout << STREAM } }
 
 struct scoped_enable_trace {
@@ -349,10 +349,10 @@ void theory_seq::add_from_FA_to_PFA_constraints(int id1, int id2, const expr_ref
 }
 
 void theory_seq::block_curr_assignment() {
-    FINALCHECK(__LINE__ << " enter " << __FUNCTION__ << std::endl;)
+    DEBUG("fc",__LINE__ << " enter " << __FUNCTION__ << std::endl;)
 
     expr *refinement = nullptr;
-    FINALCHECK(__LINE__ << "[Refinement]\nformulas:\n";)
+    DEBUG("fc",__LINE__ << "[Refinement]\nformulas:\n";)
     for (const auto& we : m_eqs) {
         expr *const e = m.mk_eq(mk_concat(we.ls), mk_concat(we.rs));
         refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
@@ -371,88 +371,88 @@ void theory_seq::block_curr_assignment() {
     }
     if (refinement != nullptr){
         add_axiom(mk_literal(m.mk_not(refinement)));
-        FINALCHECK(mk_pp(refinement,m) << '\n';)
+        DEBUG("fc",mk_pp(refinement,m) << '\n';)
 
     }
-    FINALCHECK(__LINE__ << " leave " << __FUNCTION__ << std::endl;)
+    DEBUG("fc",__LINE__ << " leave " << __FUNCTION__ << std::endl;)
 }
 
 void theory_seq::print_terms(const expr_ref_vector& terms){
     bool first =true;
     for(auto const& term :terms) {
-        if(first) first = false; else FINALCHECK(".";);
-        FINALCHECK(mk_pp(term,m););
+        if(first) first = false; else DEBUG("fc",".";);
+        DEBUG("fc",mk_pp(term,m););
     }
 }
 
 
 void theory_seq::print_formulas(zstring msg){
-    FINALCHECK(msg <<" \n";);
+    DEBUG("fc",msg <<" \n";);
 
-    if(!m_eqs.empty() || !m_rep.empty()) FINALCHECK("Word Equations:\n";);
+    if(!m_eqs.empty() || !m_rep.empty()) DEBUG("fc","Word Equations:\n";);
     for (auto const& eq:m_eqs) {
         print_terms(eq.ls);
-        FINALCHECK(" = ";);
+        DEBUG("fc"," = ";);
         print_terms(eq.rs);
-        FINALCHECK("\n";);
+        DEBUG("fc","\n";);
     }
     for (auto const& eq:m_rep) {
         if(eq.v && eq.v->get_sort()==m_util.mk_string_sort()) {
             expr_ref_vector terms(m);
             m_util.str.get_concat_units(eq.e, terms);
             print_terms(terms);
-            FINALCHECK(" = ";);
+            DEBUG("fc"," = ";);
             terms.reset();
             m_util.str.get_concat_units(eq.v, terms);
             print_terms(terms);
-            FINALCHECK("\n";);
+            DEBUG("fc","\n";);
         }
     }
 
-    if(!m_nqs.empty()) FINALCHECK("Word Disequalities:\n";);
+    if(!m_nqs.empty()) DEBUG("fc","Word Disequalities:\n";);
     for (auto const& dis:m_nqs) {
         expr_ref_vector terms(m);
         m_util.str.get_concat_units(dis.l(), terms);
         print_terms(terms);
-        FINALCHECK(" != ";);
+        DEBUG("fc"," != ";);
         terms.reset();
         m_util.str.get_concat_units(dis.r(), terms);
         print_terms(terms);
-        FINALCHECK("\n";);
+        DEBUG("fc","\n";);
     }
 //    for(auto const& dis:m_exclude){
 //        expr_ref_vector terms(m);
 //        m_util.str.get_concat_units(dis.first, terms);
 //        print_terms(terms);
-//        FINALCHECK(" != ";);
+//        DEBUG("fc"," != ";);
 //        terms.reset();
 //        m_util.str.get_concat_units(dis.second, terms);
 //        print_terms(terms);
-//        FINALCHECK("\n";);
+//        DEBUG("fc","\n";);
 //    }
 
-    if(!m_ncs.empty()) FINALCHECK("Not Contains:\n";);
+    if(!m_ncs.empty()) DEBUG("fc","Not Contains:\n";);
     for (auto const & nc:m_ncs){
-        FINALCHECK("not " << mk_bounded_pp(nc.contains(), m, 2)<<"\n";);
+        DEBUG("fc","not " << mk_bounded_pp(nc.contains(), m, 2)<<"\n";);
     }
 
-    if(!m_rcs.empty()) FINALCHECK("Regular Constraints:\n";);
+    if(!m_rcs.empty()) DEBUG("fc","Regular Constraints:\n";);
     for (auto const & rc:m_rcs){
-        FINALCHECK(rc.term() << " in " <<rc.re() <<"\n";);
+        DEBUG("fc",rc.term() << " in " <<rc.re() <<"\n";);
     }
 
-    FINALCHECK("\n";);
+    DEBUG("fc","\n";);
 }
 
 bool theory_seq::handle_disequalities(int size) {
-    FINALCHECK("Enter handle_disequalities\n";);
+    DEBUG("fc","Enter handle_disequalities\n";);
     bool change = false;
     for (unsigned i=0; i<m_nqs.size(); i++) {
         ne &nq = m_nqs.ref(i);
         const auto id_pair = std::make_pair(std::min(nq.l().get()->get_id(), nq.r().get()->get_id()), std::max(nq.l().get()->get_id(), nq.r().get()->get_id()));
         if (!m_nqids.contains(id_pair)) {
             m_nqids.push_back(id_pair);
-            FINALCHECK(mk_pp(nq.l(),m)<<"!="<<mk_pp(nq.r(),m)<<" #("<<id_pair.first<<","<<id_pair.second<<")\n";);
+            DEBUG("fc_verbose",mk_pp(nq.l(),m)<<"!="<<mk_pp(nq.r(),m)<<" #("<<id_pair.first<<","<<id_pair.second<<")\n";);
 
             // Case 0: unit_var(LHS) != unit_var(RHS)
             // rational length1, length2;
@@ -462,14 +462,14 @@ bool theory_seq::handle_disequalities(int size) {
             //     get_num_value(mk_len(nq.r()), length2) &&
             //     length1==1 && length2==1
             // ) {
-            //     FINALCHECK("case 1: "<<mk_pp(nq.l(),m)<<"!="<<mk_pp(nq.r(),m)<<"\n";);
+            //     DEBUG("fc","case 1: "<<mk_pp(nq.l(),m)<<"!="<<mk_pp(nq.r(),m)<<"\n";);
 
             //     add_axiom(mk_literal(m.mk_not(m_autil.mk_eq(m_sk.mk_FA_self_loop_char(nq.l(), 0), m_sk.mk_FA_self_loop_char(nq.r(), 0)))));
             //     add_axiom(mk_literal(m_autil.mk_eq(m_sk.mk_FA_self_loop_counter(nq.l(), 0), m_autil.mk_int(1))));
             //     add_axiom(mk_literal(m_autil.mk_eq(m_sk.mk_FA_self_loop_counter(nq.r(), 0), m_autil.mk_int(1))));
             // } else {
                 // Case 1: len(LHS) != len(RHS)
-                FINALCHECK("case 1: "<<mk_pp(nq.l(),m)<<"!="<<mk_pp(nq.r(),m)<<"\n";);
+                DEBUG("fc_verbose","case 1: "<<mk_pp(nq.l(),m)<<"!="<<mk_pp(nq.r(),m)<<"\n";);
                 expr_ref diff_length(m.mk_not(m_autil.mk_eq(mk_len(nq.l()), mk_len(nq.r()))), m);
 
                 // Case 2: len(LHS) == len(RHS) and
@@ -490,8 +490,8 @@ bool theory_seq::handle_disequalities(int size) {
 
                 add_axiom(mk_literal(diff_length), mk_literal(diff_char));
 
-                FINALCHECK("diff_length_or_diff_character:\n";);
-                FINALCHECK(mk_pp(diff_length, m) << " or " << mk_pp(diff_char, m) << "\n";);
+                DEBUG("fc_verbose","diff_length_or_diff_character:\n";);
+                DEBUG("fc_verbose",mk_pp(diff_length, m) << " or " << mk_pp(diff_char, m) << "\n";);
             // }
             /***************************************************************************************/
             change = true;
@@ -596,8 +596,8 @@ void theory_seq::if_a_loop_is_taken_the_two_characters_on_its_label_should_be_eq
         expr_ref loop_i_j_gt_zero(m_autil.mk_ge(mk_PFA_loop_counter(id1, id2, i, j), m_autil.mk_int(1)), m);
         expr_ref char_i_equals_char_j(m_autil.mk_eq(FA_left.characters[i].get(), FA_right.characters[j].get()), m);
         add_axiom(~mk_literal(loop_i_j_gt_zero), mk_literal(char_i_equals_char_j));
-        FINALCHECK("if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal: \n" << mk_pp(mk_PFA_loop_counter(id1, id2, i, j), m) << " >= 1 ==> ";);
-        FINALCHECK(mk_pp(FA_left.characters[i].get(), m) << " = " << mk_pp(FA_right.characters[j].get(), m)  << "\n";);
+        DEBUG("fc_verbose","if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal: \n" << mk_pp(mk_PFA_loop_counter(id1, id2, i, j), m) << " >= 1 ==> ";);
+        DEBUG("fc_verbose",mk_pp(FA_left.characters[i].get(), m) << " = " << mk_pp(FA_right.characters[j].get(), m)  << "\n";);
     }
 }
 
@@ -612,8 +612,8 @@ void theory_seq::only_at_most_one_incoming_edge_of_one_state_can_be_selected(int
             for (unsigned j=i+1; j<edges.size(); j++)
                 literals_can_not_be_both_true.push_back(m.mk_or(m.mk_not(edges[i].get()), m.mk_not(edges[j].get())));
         add_axiom(mk_literal(m.mk_and(literals_can_not_be_both_true))); // TODO: propagate or not?
-        FINALCHECK("only_at_most_one_incoming_edge_of_one_state_can_be_selected:\n";);
-        FINALCHECK(mk_pp(m.mk_and(literals_can_not_be_both_true), m) << "\n";);
+        DEBUG("fc_verbose","only_at_most_one_incoming_edge_of_one_state_can_be_selected:\n";);
+        DEBUG("fc_verbose",mk_pp(m.mk_and(literals_can_not_be_both_true), m) << "\n";);
     }
 }
 
@@ -628,8 +628,8 @@ void theory_seq::only_at_most_one_outgoing_edge_of_one_state_can_be_selected(int
             for (unsigned j=i+1; j<edges.size(); j++)
                 literals_can_not_be_both_true.push_back(m.mk_or(m.mk_not(edges[i].get()), m.mk_not(edges[j].get())));
         add_axiom(mk_literal(m.mk_and(literals_can_not_be_both_true))); // TODO: propagate or not?
-        FINALCHECK("only_at_most_one_outgoing_edge_of_one_state_can_be_selected:\n";);
-        FINALCHECK(mk_pp(m.mk_and(literals_can_not_be_both_true), m) << "\n";);
+        DEBUG("fc_verbose","only_at_most_one_outgoing_edge_of_one_state_can_be_selected:\n";);
+        DEBUG("fc_verbose",mk_pp(m.mk_and(literals_can_not_be_both_true), m) << "\n";);
     }
 }
 
@@ -648,8 +648,8 @@ void theory_seq::selection_of_self_edge_or_outgoing_edges_implies_selection_of_i
 
     if (self_loop_or_outgoing_edges.size()>0 && incoming_edges.size()>0) {
         add_axiom(~mk_literal(m.mk_or(self_loop_or_outgoing_edges)), mk_literal(m.mk_or(incoming_edges)));
-        FINALCHECK("selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges:\n";);
-        FINALCHECK(mk_pp(expr_ref(m.mk_implies(m.mk_or(self_loop_or_outgoing_edges), m.mk_or(incoming_edges)), m), m) << "\n";);
+        DEBUG("fc_verbose","selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges:\n";);
+        DEBUG("fc_verbose",mk_pp(expr_ref(m.mk_implies(m.mk_or(self_loop_or_outgoing_edges), m.mk_or(incoming_edges)), m), m) << "\n";);
     }
 }
 
@@ -662,13 +662,13 @@ void theory_seq::at_least_one_incoming_edge_of_final_state_should_be_selected(in
 
     if (incoming_edges.size()>0) {
         add_axiom(mk_literal(m.mk_or(incoming_edges)));
-        FINALCHECK("at_least_one_incoming_edge_of_final_state_should_be_selected:\n";);
-        FINALCHECK(mk_pp(expr_ref(m.mk_or(incoming_edges), m), m) << "\n";);
+        DEBUG("fc_verbose","at_least_one_incoming_edge_of_final_state_should_be_selected:\n";);
+        DEBUG("fc_verbose",mk_pp(expr_ref(m.mk_or(incoming_edges), m), m) << "\n";);
     }
 }
 
 void theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(int id1, int id2) {
-    FINALCHECK("sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA:\n";);
+    DEBUG("fc_verbose","sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA:\n";);
     for (unsigned i=0; i<FA_left.size(); i++) {
         expr_ref_vector loops(m);
         for (unsigned j=0; j<FA_right.size(); j++) {
@@ -677,7 +677,7 @@ void theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_t
         }
         expr_ref sum_loop(m_autil.mk_add(loops), m);
         add_axiom(mk_literal(m_autil.mk_eq(sum_loop, FA_left.counters[i].get())));
-        FINALCHECK(mk_pp(expr_ref(m_autil.mk_eq(sum_loop, FA_left.counters[i].get()), m), m) << "\n";);
+        DEBUG("fc_verbose",mk_pp(expr_ref(m_autil.mk_eq(sum_loop, FA_left.counters[i].get()), m), m) << "\n";);
     }
     for (unsigned j=0; j<FA_right.size(); j++) {
         expr_ref_vector loops(m);
@@ -687,16 +687,16 @@ void theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_t
         }
         expr_ref sum_loop(m_autil.mk_add(loops), m);
         add_axiom(mk_literal(m_autil.mk_eq(sum_loop, FA_right.counters[j].get())));
-        FINALCHECK(mk_pp(expr_ref(m_autil.mk_eq(sum_loop, FA_right.counters[j].get()), m), m) << "\n";);
+        DEBUG("fc_verbose",mk_pp(expr_ref(m_autil.mk_eq(sum_loop, FA_right.counters[j].get()), m), m) << "\n";);
     }
 }
 
 void theory_seq::length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const expr_ref_vector &term, int p) {
-    FINALCHECK("length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times:\n";);
+    DEBUG("fc_verbose","length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times:\n";);
     for (const auto &atom: term) {
         if (atom_is_unit_var(atom)) { // TODO: can this block be omitted?
             add_axiom(mk_literal(m_autil.mk_eq(mk_len(atom), m_autil.mk_int(1))));
-            FINALCHECK(mk_pp(expr_ref(m_autil.mk_eq(mk_len(atom), m_autil.mk_int(1)), m), m) << "\n";);
+            DEBUG("fc_verbose",mk_pp(expr_ref(m_autil.mk_eq(mk_len(atom), m_autil.mk_int(1)), m), m) << "\n";);
         } else if (get_atom_const_char_unicode(atom)<0) {
             expr_ref_vector loops(m);
             for (int i=0; i<p; i++) {
@@ -704,13 +704,13 @@ void theory_seq::length_of_string_variable_equals_sum_of_loop_length_multiplied_
             }
             expr_ref sum_loop(m_autil.mk_add(loops), m);
             add_axiom(mk_literal(m_autil.mk_eq(mk_len(atom), sum_loop)));
-            FINALCHECK(mk_pp(expr_ref(m_autil.mk_eq(mk_len(atom), sum_loop), m), m) << "\n";);
+            DEBUG("fc_verbose",mk_pp(expr_ref(m_autil.mk_eq(mk_len(atom), sum_loop), m), m) << "\n";);
         }
     }
 }
 
 bool theory_seq::flatten_equalities(int size) {
-    FINALCHECK("Enter flatten_equalities\n";);
+    DEBUG("fc","Enter flatten_equalities\n";);
 
     bool change = false;
     for (auto const& eq: m_rep) {
@@ -728,13 +728,13 @@ bool theory_seq::flatten_equalities(int size) {
                 m_util.str.get_concat(eq.e, rhs);
                 from_word_term_to_FA(rhs, size, FA_right);
 
-                FINALCHECK("FA left: " << FA_left;);
-                FINALCHECK("\n\nFA right: " << FA_right;);
+                DEBUG("fc","FA left: " << FA_left;);
+                DEBUG("fc","\n\nFA right: " << FA_right;);
 
                 expr_ref_vector terms(lhs);
                 terms.append(rhs);
 
-                FINALCHECK("\n===================\n";);
+                DEBUG("fc","\n===================\n";);
 
                 add_from_FA_to_PFA_constraints((EQ+1) + id_pair.first, id_pair.second, terms, size);
 
@@ -752,13 +752,13 @@ bool theory_seq::flatten_equalities(int size) {
             from_word_term_to_FA(eq.ls, size, FA_left);
             from_word_term_to_FA(eq.rs, size, FA_right);
 
-            FINALCHECK("FA left: " << FA_left <<"\n";);
-            FINALCHECK("FA right: " << FA_right <<"\n";);
+            DEBUG("fc","FA left: " << FA_left <<"\n";);
+            DEBUG("fc","FA right: " << FA_right <<"\n";);
 
             expr_ref_vector terms(eq.ls);
             terms.append(eq.rs);
 
-            FINALCHECK("\n===================\n";);
+            DEBUG("fc","\n===================\n";);
 
             add_from_FA_to_PFA_constraints(EQ, eq.id(), terms, size);
 
@@ -853,6 +853,29 @@ void theory_seq::print_term(const expr_ref_vector &term, int size) {
     }
 }
 
+void theory_seq::print_FA_parameters(const expr_ref_vector &term, int size) {
+    for (const auto &atom: term) {
+        if (get_atom_const_char_unicode(atom) >= 0) {
+        } else if (atom_is_unit_var(atom)) {
+            rational _unicode;
+            if (!get_num_value(mk_FA_self_loop_char(atom, 0), _unicode))
+            SASSERT(false);
+            DISPLAYMODEL("mk_FA_self_loop_char("<<mk_pp(atom,m)<<", 0) = " << _unicode << "\n";);
+            DISPLAYMODEL("mk_FA_self_loop_counter("<<mk_pp(atom,m)<<", 0) = 1\n";);
+        } else {
+            rational _counter, _unicode;
+            for (int i=0; i<size; i++) {
+                if (!get_num_value(mk_FA_self_loop_counter(atom, i), _counter))
+                SASSERT(false);
+                if (!get_num_value(mk_FA_self_loop_char(atom, i), _unicode))
+                SASSERT(false);
+                DISPLAYMODEL("mk_FA_self_loop_char("<<mk_pp(atom,m)<<", "<<i<< ") = " << _unicode << "\n";);
+                DISPLAYMODEL("mk_FA_self_loop_counter("<<mk_pp(atom,m)<<", "<<i<< ") = " << _counter << "\n";);
+            }
+        }
+    }
+}
+
 void theory_seq::print_model(int size) {
     final_check_status arith_fc_status = m_arith_value.final_check();
     if (arith_fc_status == FC_DONE) {
@@ -871,7 +894,15 @@ void theory_seq::print_model(int size) {
                     DISPLAYMODEL("\n";);
                 }
                 DISPLAYMODEL("=====================\n";);
+
+                expr_ref_vector term(m);
+                m_util.str.get_concat(eq.v, term);
+                m_util.str.get_concat(eq.e, term);
+                print_FA_parameters(term, size);
+                DISPLAYMODEL("=====================\n";);
             }
+
+
         }
         for (const auto &eq: m_eqs) {
             DISPLAYMODEL("(m_eqs) =============\n";);
@@ -883,6 +914,9 @@ void theory_seq::print_model(int size) {
                 mode++;
                 DISPLAYMODEL("\n";);
             }
+            DISPLAYMODEL("=====================\n";);
+            print_FA_parameters(eq.ls, size);
+            print_FA_parameters(eq.rs, size);
             DISPLAYMODEL("=====================\n";);
         }
         for (const auto &nq: m_nqs) {
@@ -898,12 +932,17 @@ void theory_seq::print_model(int size) {
                 DISPLAYMODEL("\n";);
             }
             DISPLAYMODEL("=====================\n";);
+            expr_ref_vector term(m);
+            m_util.str.get_concat(nq.l(), term);
+            m_util.str.get_concat(nq.r(), term);
+            print_FA_parameters(term, size);
+            DISPLAYMODEL("=====================\n";);
         }
     }
 }
 
 final_check_status theory_seq::final_check_eh() {
-    FINALCHECK("level: " << ctx.get_scope_level() << "\n";)
+    DEBUG("fc","level: " << ctx.get_scope_level() << "\n";)
     // std::cout << m_eqs.size() << " " << m_nqs.size() << " " << m_ncs.size() << " " << m_rcs.size() << "\n";
     // for (int i=0; i<m_eqs.size(); i++) display_equation(std::cout, m_eqs[i]), std::cout << "===========\n";
     // for (int i=0; i<m_nqs.size(); i++) display_disequation(std::cout, m_nqs[i]), std::cout << "===========\n";
@@ -914,11 +953,11 @@ final_check_status theory_seq::final_check_eh() {
     }
 
     expr_ref_vector assignments(m);
-    if (is_debug_enabled("fc")) ctx.display_assignment(std::cout);
+    if (is_debug_enabled("assignment")) ctx.display_assignment(std::cout);
 
 
     int segment_size = 8;
-    if (is_debug_enabled("fc")) segment_size = 2 ;
+    if (is_debug_enabled("small_seg")) segment_size = 2 ;
     m_new_propagation = false;
     TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
     TRACE("seq_verbose", ctx.display(tout););
@@ -3653,7 +3692,7 @@ void theory_seq::new_diseq_eh(theory_var v1, theory_var v2) {
 }
 
 void theory_seq::push_scope_eh() {
-    FINALCHECK("push_scope: "<<ctx.get_scope_level()<<"\n";);
+    DEBUG("fc","push_scope: "<<ctx.get_scope_level()<<"\n";);
     theory::push_scope_eh();
     m_rep.push_scope();
     m_repids.push_scope();
@@ -3674,7 +3713,7 @@ void theory_seq::push_scope_eh() {
 }
 
 void theory_seq::pop_scope_eh(unsigned num_scopes) {
-    FINALCHECK("pop_scope: "<<ctx.get_scope_level()<<" with "<<num_scopes<<" levels\n";);
+    DEBUG("fc","pop_scope: "<<ctx.get_scope_level()<<" with "<<num_scopes<<" levels\n";);
     m_trail_stack.pop_scope(num_scopes);
     theory::pop_scope_eh(num_scopes);
     m_dm.pop_scope(num_scopes);
