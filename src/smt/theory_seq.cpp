@@ -466,6 +466,9 @@ bool theory_seq::handle_disequalities(int size) {
                 FINALCHECK("case 1: "<<mk_pp(nq.l(),m)<<"!="<<mk_pp(nq.r(),m)<<"\n";);
 
                 add_axiom(mk_literal(m.mk_not(m_autil.mk_eq(m_sk.mk_FA_self_loop_char(nq.l(), 0), m_sk.mk_FA_self_loop_char(nq.r(), 0)))));
+                add_axiom(mk_literal(m_autil.mk_eq(m_sk.mk_FA_self_loop_counter(nq.l(), 0), m_autil.mk_int(1))));
+                add_axiom(mk_literal(m_autil.mk_eq(m_sk.mk_FA_self_loop_counter(nq.r(), 0), m_autil.mk_int(1))));
+
             } else {
                 // Case 2: len(LHS) != len(RHS)
                 FINALCHECK("case 2: "<<mk_pp(nq.l(),m)<<"!="<<mk_pp(nq.r(),m)<<"\n";);
