@@ -512,9 +512,13 @@ namespace smt {
         /***************************************************************************************************/
 
         // final check 
-        void block_curr_assignment();
         expr_ref_vector handle_disequalities(int size);
         expr_ref_vector flatten_equalities(int size);
+        void block_curr_assignment();
+        void print_terms(const expr_ref_vector& terms);
+        void print_formulas(zstring msg);
+        void print_term(const expr_ref_vector &term, int size);
+        void print_FA_parameters(const expr_ref_vector &term, int size);
         void print_model(int size);
         bool check_parikh_image();       // propagate check_parikh_image equalities
         bool simplify_and_solve_eqs();   // solve unitary equalities
