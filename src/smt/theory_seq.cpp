@@ -449,7 +449,7 @@ bool theory_seq::handle_disequalities(int size) {
     bool change = false;
     for (unsigned i=0; i<m_nqs.size(); i++) {
         ne &nq = m_nqs.ref(i);
-        const auto id_pair = std::make_pair(nq.l().get()->get_id() + nq.r().get()->get_id(), std::abs((int)nq.l().get()->get_id() - (int)nq.r().get()->get_id()));
+        const auto id_pair = std::make_pair(std::min(nq.l().get()->get_id(), nq.r().get()->get_id()), std::max(nq.l().get()->get_id(), nq.r().get()->get_id()));
         if (!m_nqids.contains(id_pair)) {
             m_nqids.push_back(id_pair);
             FINALCHECK(mk_pp(nq.l(),m)<<"!="<<mk_pp(nq.r(),m)<<" #("<<id_pair.first<<","<<id_pair.second<<")\n";);
@@ -716,8 +716,9 @@ bool theory_seq::flatten_equalities(int size) {
     for (auto const& eq: m_rep) {
         if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
             eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
-            if (!m_repids.contains(std::make_pair(eq.v->get_id() + eq.e->get_id(), std::abs((int)eq.v->get_id() - (int)eq.e->get_id())))) {
-                m_repids.push_back(std::make_pair(eq.v->get_id() + eq.e->get_id(), std::abs((int)eq.v->get_id() - (int)eq.e->get_id())));
+            const auto id_pair = std::make_pair(std::min(eq.v->get_id(), eq.e->get_id()), std::max(eq.v->get_id(), eq.e->get_id()));
+            if (!m_repids.contains(id_pair)) {
+                m_repids.push_back(id_pair);
                 is_under_approximation = true;
 
                 expr_ref_vector lhs(m);
@@ -735,7 +736,7 @@ bool theory_seq::flatten_equalities(int size) {
 
                 FINALCHECK("\n===================\n";);
 
-                add_from_FA_to_PFA_constraints((EQ+1) + eq.v->get_id() + eq.e->get_id(), std::abs((int)eq.v->get_id() - (int)eq.e->get_id()), terms, size);
+                add_from_FA_to_PFA_constraints((EQ+1) + id_pair.first, id_pair.second, terms, size);
 
                 change = true;
             }
