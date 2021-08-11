@@ -220,7 +220,6 @@ namespace seq {
         expr_ref le = mk_len(e);
         expr_ref ls_minus_i_l(mk_sub(mk_sub(ls, _i), _l), m);
         expr_ref y = m_sk.mk_post(s, a.mk_add(i, l));
-        expr_ref xe = mk_concat(x, e);
         expr_ref xey = mk_concat(x, e, y);
         expr_ref zero(a.mk_int(0), m);
 
