@@ -859,18 +859,18 @@ void theory_seq::print_FA_parameters(const expr_ref_vector &term, int size) {
         } else if (atom_is_unit_var(atom)) {
             rational _unicode;
             if (!get_num_value(mk_FA_self_loop_char(atom, 0), _unicode))
-            SASSERT(false);
-            DISPLAYMODEL("mk_FA_self_loop_char("<<mk_pp(atom,m)<<", 0) = " << _unicode << "\n";);
-            DISPLAYMODEL("mk_FA_self_loop_counter("<<mk_pp(atom,m)<<", 0) = 1\n";);
+                SASSERT(false);
+            DEBUG("parm", "mk_FA_self_loop_char("<<mk_pp(atom,m)<<", 0) = " << _unicode << "\n";);
+            DEBUG("parm", "mk_FA_self_loop_counter("<<mk_pp(atom,m)<<", 0) = 1\n";);
         } else {
             rational _counter, _unicode;
             for (int i=0; i<size; i++) {
                 if (!get_num_value(mk_FA_self_loop_counter(atom, i), _counter))
-                SASSERT(false);
+                    SASSERT(false);
                 if (!get_num_value(mk_FA_self_loop_char(atom, i), _unicode))
-                SASSERT(false);
-                DISPLAYMODEL("mk_FA_self_loop_char("<<mk_pp(atom,m)<<", "<<i<< ") = " << _unicode << "\n";);
-                DISPLAYMODEL("mk_FA_self_loop_counter("<<mk_pp(atom,m)<<", "<<i<< ") = " << _counter << "\n";);
+                    SASSERT(false);
+                DEBUG("parm", "mk_FA_self_loop_char("<<mk_pp(atom,m)<<", "<<i<< ") = " << _unicode << "\n";);
+                DEBUG("parm", "mk_FA_self_loop_counter("<<mk_pp(atom,m)<<", "<<i<< ") = " << _counter << "\n";);
             }
         }
     }
