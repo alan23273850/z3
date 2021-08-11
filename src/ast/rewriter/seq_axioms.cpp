@@ -220,7 +220,6 @@ namespace seq {
         expr_ref le = mk_len(e);
         expr_ref ls_minus_i_l(mk_sub(mk_sub(ls, _i), _l), m);
         expr_ref y = m_sk.mk_post(s, a.mk_add(i, l));
-        expr_ref xe = mk_concat(x, e);
         expr_ref xey = mk_concat(x, e, y);
         expr_ref zero(a.mk_int(0), m);
 
@@ -1004,7 +1003,7 @@ namespace seq {
         expr_ref c = m_sk.mk("seq.prefix.c", s, t, char_sort);
         expr_ref d = m_sk.mk("seq.prefix.d", s, t, char_sort);
         add_clause(lit, s_gt_t, mk_seq_eq(s, mk_concat(x, seq.str.mk_unit(c), y)));
-        add_clause(lit, s_gt_t, mk_seq_eq(t, mk_concat(x, seq.str.mk_unit(d), z)), mk_seq_eq(t, x));
+        add_clause(lit, s_gt_t, mk_seq_eq(t, mk_concat(x, seq.str.mk_unit(d), z)));
         add_clause(lit, s_gt_t, ~mk_eq(c, d));
 #endif
     }
