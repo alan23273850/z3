@@ -728,13 +728,13 @@ bool theory_seq::flatten_equalities(int size) {
                 m_util.str.get_concat(eq.e, rhs);
                 from_word_term_to_FA(rhs, size, FA_right);
 
-                DEBUG("fc","FA left: " << FA_left;);
-                DEBUG("fc","\n\nFA right: " << FA_right;);
+                DEBUG("fc_verbose","FA left: " << FA_left;);
+                DEBUG("fc_verbose","\n\nFA right: " << FA_right;);
 
                 expr_ref_vector terms(lhs);
                 terms.append(rhs);
 
-                DEBUG("fc","\n===================\n";);
+                DEBUG("fc_verbose","\n===================\n";);
 
                 add_from_FA_to_PFA_constraints((EQ+1) + id_pair.first, id_pair.second, terms, size);
 
@@ -752,13 +752,13 @@ bool theory_seq::flatten_equalities(int size) {
             from_word_term_to_FA(eq.ls, size, FA_left);
             from_word_term_to_FA(eq.rs, size, FA_right);
 
-            DEBUG("fc","FA left: " << FA_left <<"\n";);
-            DEBUG("fc","FA right: " << FA_right <<"\n";);
+            DEBUG("fc_verbose","FA left: " << FA_left <<"\n";);
+            DEBUG("fc_verbose","FA right: " << FA_right <<"\n";);
 
             expr_ref_vector terms(eq.ls);
             terms.append(eq.rs);
 
-            DEBUG("fc","\n===================\n";);
+            DEBUG("fc_verbose","\n===================\n";);
 
             add_from_FA_to_PFA_constraints(EQ, eq.id(), terms, size);
 
@@ -957,6 +957,7 @@ final_check_status theory_seq::final_check_eh() {
 
 
     int segment_size = stoi(gparams::get_value("segment"));
+
     m_new_propagation = false;
     TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
     TRACE("seq_verbose", ctx.display(tout););
@@ -3691,7 +3692,7 @@ void theory_seq::new_diseq_eh(theory_var v1, theory_var v2) {
 }
 
 void theory_seq::push_scope_eh() {
-    DEBUG("fc","push_scope: "<<ctx.get_scope_level()<<"\n";);
+    DEBUG("level","push_scope: "<<ctx.get_scope_level()<<"\n";);
     theory::push_scope_eh();
     m_rep.push_scope();
     m_repids.push_scope();
@@ -3712,7 +3713,7 @@ void theory_seq::push_scope_eh() {
 }
 
 void theory_seq::pop_scope_eh(unsigned num_scopes) {
-    DEBUG("fc","pop_scope: "<<ctx.get_scope_level()<<" with "<<num_scopes<<" levels\n";);
+    DEBUG("level","pop_scope: "<<ctx.get_scope_level()<<" with "<<num_scopes<<" levels\n";);
     m_trail_stack.pop_scope(num_scopes);
     theory::pop_scope_eh(num_scopes);
     m_dm.pop_scope(num_scopes);
