@@ -956,8 +956,7 @@ final_check_status theory_seq::final_check_eh() {
     if (is_debug_enabled("assignment")) ctx.display_assignment(std::cout);
 
 
-    int segment_size = 8;
-    if (is_debug_enabled("small_seg")) segment_size = 2 ;
+    int segment_size = stoi(gparams::get_value("segment"));
     m_new_propagation = false;
     TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
     TRACE("seq_verbose", ctx.display(tout););
