@@ -592,7 +592,10 @@ void theory_seq::from_word_term_to_FA(const expr_ref_vector &term, int p, struct
 
 void theory_seq::from_nq_bridge_to_FA(int type, const std::pair<int, int> &nqid, int p, struct FA &FA) {
     int index[][3] = {{PREFIX, DIFF_LHS, SUFFIX_LHS}, {PREFIX, DIFF_RHS, SUFFIX_RHS}};
-    FA.clear(); type--;
+    FA.clear();
+    if (type == DISEQ_LHS) type = 0;
+    else if (type == DISEQ_RHS) type = 1;
+    else SASSERT(false);
     for (int i=0; i<p; i++) {
         FA.characters.push_back(mk_nq_char(nqid, index[type][0], i));
         FA.counters.push_back(mk_nq_counter(nqid, index[type][0], i));
