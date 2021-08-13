@@ -438,7 +438,11 @@ namespace smt {
         expr* find_fst_non_empty_var(expr_ref_vector const& x);
         bool has_len_offset(expr_ref_vector const& ls, expr_ref_vector const& rs, int & diff);
 
-        bool atom_is_const_char(expr *const e, expr* &ch);
+        // formula types
+        enum formula_types {
+            EQ,
+            REP
+        };
 
         // flatten_equalities
         enum PFA_direction {
@@ -471,18 +475,22 @@ namespace smt {
             }
         };
 
+        expr_ref mk_parikh_image_counter(expr *var, expr *ch);
+        expr_ref mk_FA_self_loop_counter(expr *var, unsigned i);
+        template <typename T> expr_ref mk_PFA_loop_counter(int type, T id, unsigned i, unsigned j);
 
         struct FA FA_left, FA_right;
+        bool atom_is_const_char(expr *const e, expr* &ch);
         bool can_be_a_valid_sync_loop(unsigned i, unsigned j);
-        void from_word_term_to_FA(const expr_ref_vector &term, struct FA &FA, int p);
-        void if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(unsigned eqid, int i, int j);
-        void if_a_loop_is_taken_then_its_counter_should_be_nonnegative(unsigned eqid, int i, int j);
-        void only_at_most_one_incoming_edge_of_one_state_can_be_selected(unsigned eqid, int i, int j);
-        void only_at_most_one_outgoing_edge_of_one_state_can_be_selected(unsigned eqid, unsigned i, unsigned j);
-        void selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(unsigned eqid, unsigned i, unsigned j);
-        void at_least_one_incoming_edge_of_final_state_should_be_selected(unsigned eqid);
-        void sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(unsigned eqid);
-        void length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const depeq &eq, int p);
+        void from_word_term_to_FA(const expr_ref_vector &term, int p, struct FA &FA);
+        template <typename T> void if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(int type, T id, int i, int j);
+        template <typename T> void if_a_loop_is_taken_then_its_counter_should_be_nonnegative(int type, T id, int i, int j);
+        template <typename T> void only_at_most_one_incoming_edge_of_one_state_can_be_selected(int type, T id, int i, int j);
+        template <typename T> void only_at_most_one_outgoing_edge_of_one_state_can_be_selected(int type, T id, unsigned i, unsigned j);
+        template <typename T> void selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(int type, T id, unsigned i, unsigned j);
+        template <typename T> void at_least_one_incoming_edge_of_final_state_should_be_selected(int type, T id);
+        template <typename T> void sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(int type, T id);
+        void length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const expr_ref_vector &term, int p);
         /***************************************************************************************************/
 
         // final check 
