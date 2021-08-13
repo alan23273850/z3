@@ -223,14 +223,24 @@ expr_ref skolem::mk_FA_self_loop_counter(expr *var, unsigned i) {
         a.mk_int()), m);
 }
 
-expr_ref skolem::mk_PFA_loop_counter(unsigned eqid, unsigned i, unsigned j) {
-    return expr_ref(seq.mk_skolem(symbol("seq.pfa_loop_counter"), 3,
-        std::initializer_list<expr*>({a.mk_int(eqid), a.mk_int(i), a.mk_int(j)}).begin(),
+expr_ref skolem::mk_PFA_loop_counter(int type, int id, unsigned i, unsigned j) {
+    return expr_ref(seq.mk_skolem(symbol("seq.pfa_loop_counter"), 4,
+        std::initializer_list<expr*>({a.mk_int(type), a.mk_int(id), a.mk_int(i), a.mk_int(j)}).begin(),
+        a.mk_int()), m);
+}
+expr_ref skolem::mk_PFA_loop_counter(int type, const std::pair<int, int> id, unsigned i, unsigned j) {
+    return expr_ref(seq.mk_skolem(symbol("seq.pfa_loop_counter"), 5,
+        std::initializer_list<expr*>({a.mk_int(type), a.mk_int(id.first), a.mk_int(id.second), a.mk_int(i), a.mk_int(j)}).begin(),
         a.mk_int()), m);
 }
 
-expr_ref skolem::mk_PFA_edge_selection(unsigned eqid, const std::pair<int, int> &state1, const std::pair<int, int> &state2) {
-    return expr_ref(seq.mk_skolem(symbol("seq.pfa_edge_selection"), 5,
-        std::initializer_list<expr*>({a.mk_int(eqid), a.mk_int(state1.first), a.mk_int(state1.second), a.mk_int(state2.first), a.mk_int(state2.second)}).begin(),
+expr_ref skolem::mk_PFA_edge_selection(int type, int id, const std::pair<int, int> &state1, const std::pair<int, int> &state2) {
+    return expr_ref(seq.mk_skolem(symbol("seq.pfa_edge_selection"), 6,
+        std::initializer_list<expr*>({a.mk_int(type), a.mk_int(id), a.mk_int(state1.first), a.mk_int(state1.second), a.mk_int(state2.first), a.mk_int(state2.second)}).begin(),
+        m.mk_bool_sort()), m);
+}
+expr_ref skolem::mk_PFA_edge_selection(int type, const std::pair<int, int> id, const std::pair<int, int> &state1, const std::pair<int, int> &state2) {
+    return expr_ref(seq.mk_skolem(symbol("seq.pfa_edge_selection"), 7,
+        std::initializer_list<expr*>({a.mk_int(type), a.mk_int(id.first), a.mk_int(id.second), a.mk_int(state1.first), a.mk_int(state1.second), a.mk_int(state2.first), a.mk_int(state2.second)}).begin(),
         m.mk_bool_sort()), m);
 }
