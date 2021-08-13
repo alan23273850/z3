@@ -674,13 +674,14 @@ final_check_status theory_seq::final_check_eh() {
         return FC_DONE;
     }
 
+    if (is_debug_enabled("assignment")) ctx.display_assignment(std::cout);
+    int segment_size = stoi(gparams::get_value("segment"));
 
     m_new_propagation = false;
     TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
     TRACE("seq_verbose", ctx.display(tout););
-    flatten_equalities(5);
-    // std::cout << m_nqs.size() << "\n";
-    if (/*m_nqs.size()>0 ||*/ m_ncs.size()>0 || m_rcs.size()>0)
+    flatten_equalities(segment_size);
+    if (m_nqs.size()>0 || m_ncs.size()>0 || m_rcs.size()>0)
         return FC_GIVEUP;
 
     final_check_status arith_fc_status = m_arith_value.final_check();
@@ -692,7 +693,7 @@ final_check_status theory_seq::final_check_eh() {
                     if (!atom_is_const_char(atom, ch)) {
                         rational _val;
                         DISPLAYMODEL("[" << mk_pp(atom, m) << "] ==> ";);
-                        for (int i=0; i<5; i++) {
+                        for (int i=0; i<segment_size; i++) {
                             get_num_value(m_sk.mk_FA_self_loop_counter(atom, i), _val);
                             expr_ref result(m);
                             expr *e = m_sk.mk_FA_self_loop_string(atom, i);
