@@ -390,6 +390,8 @@ bool theory_seq::handle_disequalities(int size) {
         if (!m_nqids.contains(id_pair)) {
             m_nqids.push_back(id_pair);
 
+            expr_ref_vector expv(m);
+
             /***************************************** LHS *****************************************/
             expr_ref_vector lhs(m);
             m_util.str.get_concat_units(nq.l(), lhs);
@@ -399,27 +401,27 @@ bool theory_seq::handle_disequalities(int size) {
             for (unsigned i = 0; i < FA_left.size(); i++) {
                 for (unsigned j = 0; j < FA_right.size(); j++) {
                     // 1st: for each possibly valid sync loop, the two characters on that loop must be the same.
-                    if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(DISEQ_LHS, id_pair, i, j);
+                    expv.append(if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(DISEQ_LHS, id_pair, i, j));
 
                     // 2nd: only at most one in-coming edge of one state can be selected.
-                    only_at_most_one_incoming_edge_of_one_state_can_be_selected(DISEQ_LHS, id_pair, i, j);
+                    expv.append(only_at_most_one_incoming_edge_of_one_state_can_be_selected(DISEQ_LHS, id_pair, i, j));
 
                     // 3rd: only at most one out-going edge of one state can be selected.
-                    only_at_most_one_outgoing_edge_of_one_state_can_be_selected(DISEQ_LHS, id_pair, i, j);
+                    expv.append(only_at_most_one_outgoing_edge_of_one_state_can_be_selected(DISEQ_LHS, id_pair, i, j));
 
                     // 4th: selection of self edges or out-going edges implies selection of in-coming edges
-                    selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(DISEQ_LHS, id_pair, i, j);
+                    expv.append(selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(DISEQ_LHS, id_pair, i, j));
                 }
             }
 
             // 5th: at least one in-coming edge of final state should be selected.
-            at_least_one_incoming_edge_of_final_state_should_be_selected(DISEQ_LHS, id_pair);
+            expv.append(at_least_one_incoming_edge_of_final_state_should_be_selected(DISEQ_LHS, id_pair));
 
             // 6th: sum of edges for a single loop on the PFA must be mapped back to the original FA.
-            sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(DISEQ_LHS, id_pair);
+            expv.append(sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(DISEQ_LHS, id_pair));
 
             // 7th: len(x) == sum_i { len(x_i) * times(x_i) }
-            length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(lhs, size);
+            expv.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(lhs, size));
             /***************************************************************************************/
 
             /***************************************** RHS *****************************************/
@@ -431,39 +433,38 @@ bool theory_seq::handle_disequalities(int size) {
             for (unsigned i = 0; i < FA_left.size(); i++) {
                 for (unsigned j = 0; j < FA_right.size(); j++) {
                     // 1st: for each possibly valid sync loop, the two characters on that loop must be the same.
-                    if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(DISEQ_RHS, id_pair, i, j);
+                    expv.append(if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(DISEQ_RHS, id_pair, i, j));
 
                     // 2nd: only at most one in-coming edge of one state can be selected.
-                    only_at_most_one_incoming_edge_of_one_state_can_be_selected(DISEQ_RHS, id_pair, i, j);
+                    expv.append(only_at_most_one_incoming_edge_of_one_state_can_be_selected(DISEQ_RHS, id_pair, i, j));
 
                     // 3rd: only at most one out-going edge of one state can be selected.
-                    only_at_most_one_outgoing_edge_of_one_state_can_be_selected(DISEQ_RHS, id_pair, i, j);
+                    expv.append(only_at_most_one_outgoing_edge_of_one_state_can_be_selected(DISEQ_RHS, id_pair, i, j));
 
                     // 4th: selection of self edges or out-going edges implies selection of in-coming edges
-                    selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(DISEQ_RHS, id_pair, i, j);
+                    expv.append(selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(DISEQ_RHS, id_pair, i, j));
                 }
             }
 
             // 5th: at least one in-coming edge of final state should be selected.
-            at_least_one_incoming_edge_of_final_state_should_be_selected(DISEQ_RHS, id_pair);
+            expv.append(at_least_one_incoming_edge_of_final_state_should_be_selected(DISEQ_RHS, id_pair));
 
             // 6th: sum of edges for a single loop on the PFA must be mapped back to the original FA.
-            sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(DISEQ_RHS, id_pair);
+            expv.append(sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(DISEQ_RHS, id_pair));
 
             // 7th: len(x) == sum_i { len(x_i) * times(x_i) }
-            length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(rhs, size);
+            expv.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(rhs, size));
             /***************************************************************************************/
 
             /**************************** diff length or diff character ****************************/
-            add_axiom(mk_literal(m.mk_not(m_autil.mk_eq(mk_len(nq.l()), mk_len(nq.r())))),
-                      mk_literal(m.mk_and(m_autil.mk_eq(mk_nq_counter(id_pair, DIFF_LHS, 0), m_autil.mk_int(1)),
-                                          m_autil.mk_eq(mk_nq_counter(id_pair, DIFF_RHS, 0), m_autil.mk_int(1)),
-                                          m.mk_not(m_autil.mk_eq(mk_nq_char(id_pair, DIFF_LHS, 0), mk_nq_char(id_pair, DIFF_RHS, 0))))));
+            expr_ref diff_length(m.mk_not(m_autil.mk_eq(m_util.str.mk_length(nq.l()), m_util.str.mk_length(nq.r()))), m);
+            expr_ref diff_char(m.mk_and(m.mk_and(expv),
+                                        m.mk_and(m_autil.mk_eq(mk_nq_counter(id_pair, DIFF_LHS, 0), m_autil.mk_int(1)),
+                                                 m_autil.mk_eq(mk_nq_counter(id_pair, DIFF_RHS, 0), m_autil.mk_int(1)),
+                                                 m.mk_not(m_autil.mk_eq(mk_nq_char(id_pair, DIFF_LHS, 0), mk_nq_char(id_pair, DIFF_RHS, 0))))), m);
+            add_axiom(mk_literal(diff_length), mk_literal(diff_char));
             FINALCHECK("diff_length_or_diff_character:\n";);
-            FINALCHECK(mk_pp(expr_ref(m.mk_not(m_autil.mk_eq(mk_len(nq.l()), mk_len(nq.r()))), m), m) << " or "
-                    << mk_pp(expr_ref(m.mk_and(m_autil.mk_eq(mk_nq_counter(id_pair, DIFF_LHS, 0), mk_nq_counter(id_pair, DIFF_RHS, 0)),
-                                               m_autil.mk_eq(mk_nq_counter(id_pair, DIFF_LHS, 0), m_autil.mk_int(1)),
-                                               m.mk_not(m_autil.mk_eq(mk_nq_char(id_pair, DIFF_LHS, 0), mk_nq_char(id_pair, DIFF_RHS, 0)))), m), m) << "\n";);
+            FINALCHECK(mk_pp(diff_length, m) << " or " << mk_pp(diff_char, m) << "\n";);
             /***************************************************************************************/
             change = true;
         }
@@ -541,18 +542,22 @@ void theory_seq::from_nq_bridge_to_FA(const std::pair<int, int> &id, int mode, i
 }
 
 template <typename T>
-void theory_seq::if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(int type, const T &id, int i, int j) {
+expr_ref_vector theory_seq::if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(int type, const T &id, int i, int j) {
+    expr_ref_vector expv(m);
     if (can_be_a_valid_sync_loop(i, j)) {
         expr_ref loop_i_j_gt_zero(m_autil.mk_ge(mk_PFA_loop_counter(type, id, i, j), m_autil.mk_int(1)), m);
         expr_ref char_i_equals_char_j(m.mk_eq(FA_left.characters[i].get(), FA_right.characters[j].get()), m);
-        add_axiom(~mk_literal(loop_i_j_gt_zero), mk_literal(char_i_equals_char_j));
+        // add_axiom(~mk_literal(loop_i_j_gt_zero), mk_literal(char_i_equals_char_j));
+        expv.push_back(m.mk_or(m.mk_not(loop_i_j_gt_zero), char_i_equals_char_j));
         FINALCHECK("if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal: \n" << mk_pp(mk_PFA_loop_counter(type, id, i, j), m) << "> 0 ==> ";);
         FINALCHECK(mk_pp(FA_left.characters[i].get(), m) << " = " << mk_pp(FA_right.characters[j].get(), m)  << "\n";);
     }
+    return expv;
 }
 
 template <typename T>
-void theory_seq::only_at_most_one_incoming_edge_of_one_state_can_be_selected(int type, const T &id, int i, int j) {
+expr_ref_vector theory_seq::only_at_most_one_incoming_edge_of_one_state_can_be_selected(int type, const T &id, int i, int j) {
+    expr_ref_vector expv(m);
     expr_ref_vector edges(m);
     expr_ref_vector literals_can_not_be_both_true(m);
     if (i >= 1) edges.push_back(m_sk.mk_PFA_edge_selection(type, id, std::make_pair(i-1, j), std::make_pair(i, j)));
@@ -562,14 +567,17 @@ void theory_seq::only_at_most_one_incoming_edge_of_one_state_can_be_selected(int
         for (unsigned i=0; i<edges.size(); i++)
             for (unsigned j=i+1; j<edges.size(); j++)
                 literals_can_not_be_both_true.push_back(m.mk_or(m.mk_not(edges[i].get()), m.mk_not(edges[j].get())));
-        add_axiom(mk_literal(m.mk_and(literals_can_not_be_both_true))); // TODO: propagate or not?
+        // add_axiom(mk_literal(m.mk_and(literals_can_not_be_both_true))); // TODO: propagate or not?
+        expv.push_back(m.mk_and(literals_can_not_be_both_true));
         FINALCHECK("only_at_most_one_incoming_edge_of_one_state_can_be_selected:\n";);
         FINALCHECK(mk_pp(m.mk_and(literals_can_not_be_both_true), m) << "\n";);
     }
+    return expv;
 }
 
 template <typename T>
-void theory_seq::only_at_most_one_outgoing_edge_of_one_state_can_be_selected(int type, const T &id, int i, int j) {
+expr_ref_vector theory_seq::only_at_most_one_outgoing_edge_of_one_state_can_be_selected(int type, const T &id, int i, int j) {
+    expr_ref_vector expv(m);
     expr_ref_vector edges(m);
     expr_ref_vector literals_can_not_be_both_true(m);
     if (i+1 < (int)FA_left.size()) edges.push_back(m_sk.mk_PFA_edge_selection(type, id, std::make_pair(i, j), std::make_pair(i+1, j)));
@@ -579,14 +587,17 @@ void theory_seq::only_at_most_one_outgoing_edge_of_one_state_can_be_selected(int
         for (unsigned i=0; i<edges.size(); i++)
             for (unsigned j=i+1; j<edges.size(); j++)
                 literals_can_not_be_both_true.push_back(m.mk_or(m.mk_not(edges[i].get()), m.mk_not(edges[j].get())));
-        add_axiom(mk_literal(m.mk_and(literals_can_not_be_both_true))); // TODO: propagate or not?
+        // add_axiom(mk_literal(m.mk_and(literals_can_not_be_both_true))); // TODO: propagate or not?
+        expv.push_back(m.mk_and(literals_can_not_be_both_true));
         FINALCHECK("only_at_most_one_outgoing_edge_of_one_state_can_be_selected:\n";);
         FINALCHECK(mk_pp(m.mk_and(literals_can_not_be_both_true), m) << "\n";);
     }
+    return expv;
 }
 
 template <typename T>
-void theory_seq::selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(int type, const T &id, int i, int j) {
+expr_ref_vector theory_seq::selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(int type, const T &id, int i, int j) {
+    expr_ref_vector expv(m);
     expr_ref_vector self_loop_or_outgoing_edges(m);
     expr_ref_vector incoming_edges(m);
     if (can_be_a_valid_sync_loop(i, j))
@@ -600,30 +611,36 @@ void theory_seq::selection_of_self_edge_or_outgoing_edges_implies_selection_of_i
     if (i>=1 && j>=1) incoming_edges.push_back(m_sk.mk_PFA_edge_selection(type, id, std::make_pair(i-1, j-1), std::make_pair(i, j)));
 
     if (self_loop_or_outgoing_edges.size()>0 && incoming_edges.size()>0) {
-        add_axiom(~mk_literal(m.mk_or(self_loop_or_outgoing_edges)), mk_literal(m.mk_or(incoming_edges)));
+        // add_axiom(~mk_literal(m.mk_or(self_loop_or_outgoing_edges)), mk_literal(m.mk_or(incoming_edges)));
+        expv.push_back(m.mk_or(m.mk_not(m.mk_or(self_loop_or_outgoing_edges)), m.mk_or(incoming_edges)));
         FINALCHECK("selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges:\n";);
         FINALCHECK(mk_pp(expr_ref(m.mk_implies(m.mk_or(self_loop_or_outgoing_edges), m.mk_or(incoming_edges)), m), m) << "\n";);
     }
+    return expv;
 }
 
 template <typename T>
-void theory_seq::at_least_one_incoming_edge_of_final_state_should_be_selected(int type, const T &id) {
+expr_ref_vector theory_seq::at_least_one_incoming_edge_of_final_state_should_be_selected(int type, const T &id) {
     SASSERT(FA_left.size()>=1 && FA_right.size()>=1);
+    expr_ref_vector expv(m);
     expr_ref_vector incoming_edges(m);
     if (FA_left.size() >= 2) incoming_edges.push_back(m_sk.mk_PFA_edge_selection(type, id, std::make_pair(FA_left.size()-2, FA_right.size()-1), std::make_pair(FA_left.size()-1, FA_right.size()-1)));
     if (FA_right.size() >= 2) incoming_edges.push_back(m_sk.mk_PFA_edge_selection(type, id, std::make_pair(FA_left.size()-1, FA_right.size()-2), std::make_pair(FA_left.size()-1, FA_right.size()-1)));
     if (FA_left.size()>=2 && FA_right.size()>=2) incoming_edges.push_back(m_sk.mk_PFA_edge_selection(type, id, std::make_pair(FA_left.size()-2, FA_right.size()-2), std::make_pair(FA_left.size()-1, FA_right.size()-1)));
 
     if (incoming_edges.size()>0) {
-        add_axiom(mk_literal(m.mk_or(incoming_edges)));
+        // add_axiom(mk_literal(m.mk_or(incoming_edges)));
+        expv.push_back(m.mk_or(incoming_edges));
         FINALCHECK("at_least_one_incoming_edge_of_final_state_should_be_selected:\n";);
         FINALCHECK(mk_pp(expr_ref(m.mk_or(incoming_edges), m), m) << "\n";);
     }
+    return expv;
 }
 
 template <typename T>
-void theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(int type, const T &id) {
+expr_ref_vector theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(int type, const T &id) {
     FINALCHECK("sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA:\n";);
+    expr_ref_vector expv(m);
     for (unsigned i=0; i<FA_left.size(); i++) {
         expr_ref_vector loops(m);
         for (unsigned j=0; j<FA_right.size(); j++) {
@@ -631,7 +648,8 @@ void theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_t
                 loops.push_back(mk_PFA_loop_counter(type, id, i, j));
         }
         expr_ref sum_loop(m_autil.mk_add(loops), m);
-        add_axiom(mk_literal(m_autil.mk_eq(sum_loop, FA_left.counters[i].get())));
+        // add_axiom(mk_literal(m_autil.mk_eq(sum_loop, FA_left.counters[i].get())));
+        expv.push_back(m_autil.mk_eq(sum_loop, FA_left.counters[i].get()));
         FINALCHECK(mk_pp(expr_ref(m_autil.mk_eq(sum_loop, FA_left.counters[i].get()), m), m) << "\n";);
     }
     for (unsigned j=0; j<FA_right.size(); j++) {
@@ -641,13 +659,16 @@ void theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_t
                 loops.push_back(mk_PFA_loop_counter(type, id, i, j));
         }
         expr_ref sum_loop(m_autil.mk_add(loops), m);
-        add_axiom(mk_literal(m_autil.mk_eq(sum_loop, FA_right.counters[j].get())));
+        // add_axiom(mk_literal(m_autil.mk_eq(sum_loop, FA_right.counters[j].get())));
+        expv.push_back(m_autil.mk_eq(sum_loop, FA_right.counters[j].get()));
         FINALCHECK(mk_pp(expr_ref(m_autil.mk_eq(sum_loop, FA_right.counters[j].get()), m), m) << "\n";);
     }
+    return expv;
 }
 
-void theory_seq::length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const expr_ref_vector &term, int p) {
+expr_ref_vector theory_seq::length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const expr_ref_vector &term, int p) {
     FINALCHECK("length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times:\n";);
+    expr_ref_vector expv(m);
     for (const auto &atom: term) {
         if (atom_is_const_char_unicode(atom) < 0) {
             expr_ref_vector loops(m);
@@ -655,14 +676,17 @@ void theory_seq::length_of_string_variable_equals_sum_of_loop_length_multiplied_
                 loops.push_back(mk_FA_self_loop_counter(atom, i));
             }
             expr_ref sum_loop(m_autil.mk_add(loops), m);
-            add_axiom(mk_literal(m.mk_eq(m_util.str.mk_length(atom), sum_loop)));
+            // add_axiom(mk_literal(m.mk_eq(m_util.str.mk_length(atom), sum_loop)));
+            expv.push_back(m.mk_eq(m_util.str.mk_length(atom), sum_loop));
             FINALCHECK(mk_pp(expr_ref(m.mk_eq(m_util.str.mk_length(atom), sum_loop), m), m) << "\n";);
         }
     }
+    return expv;
 }
 
 bool theory_seq::flatten_equalities(int size) {
     bool change = false;
+    expr_ref_vector expv(m);
     for (auto const& eq: m_rep) {
         if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
             eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
@@ -682,28 +706,28 @@ bool theory_seq::flatten_equalities(int size) {
                 for (unsigned i = 0; i < FA_left.size(); i++) {
                     for (unsigned j = 0; j < FA_right.size(); j++) {
                         // 1st: for each possibly valid sync loop, the two characters on that loop must be the same.
-                        if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(REP, id_pair, i, j);
+                        expv.append(if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(REP, id_pair, i, j));
 
                         // 2nd: only at most one in-coming edge of one state can be selected.
-                        only_at_most_one_incoming_edge_of_one_state_can_be_selected(REP, id_pair, i, j);
+                        expv.append(only_at_most_one_incoming_edge_of_one_state_can_be_selected(REP, id_pair, i, j));
 
                         // 3rd: only at most one out-going edge of one state can be selected.
-                        only_at_most_one_outgoing_edge_of_one_state_can_be_selected(REP, id_pair, i, j);
+                        expv.append(only_at_most_one_outgoing_edge_of_one_state_can_be_selected(REP, id_pair, i, j));
 
                         // 4th: selection of self edges or out-going edges implies selection of in-coming edges
-                        selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(REP, id_pair, i, j);
+                        expv.append(selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(REP, id_pair, i, j));
                     }
                 }
 
                 // 5th: at least one in-coming edge of final state should be selected.
-                at_least_one_incoming_edge_of_final_state_should_be_selected(REP, id_pair);
+                expv.append(at_least_one_incoming_edge_of_final_state_should_be_selected(REP, id_pair));
 
                 // 6th: sum of edges for a single loop on the PFA must be mapped back to the original FA.
-                sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(REP, id_pair);
+                expv.append(sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(REP, id_pair));
 
                 // 7th: len(x) == sum_i { len(x_i) * times(x_i) }
-                length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(lhs, size);
-                length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(rhs, size);
+                expv.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(lhs, size));
+                expv.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(rhs, size));
 
                 change = true;
             }
@@ -724,32 +748,33 @@ bool theory_seq::flatten_equalities(int size) {
             for (unsigned i = 0; i < FA_left.size(); i++) {
                 for (unsigned j = 0; j < FA_right.size(); j++) {
                     // 1st: for each possibly valid sync loop, the two characters on that loop must be the same.
-                    if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(EQ, eq.id(), i, j);
+                    expv.append(if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(EQ, eq.id(), i, j));
 
                     // 2nd: only at most one in-coming edge of one state can be selected.
-                    only_at_most_one_incoming_edge_of_one_state_can_be_selected(EQ, eq.id(), i, j);
+                    expv.append(only_at_most_one_incoming_edge_of_one_state_can_be_selected(EQ, eq.id(), i, j));
 
                     // 3rd: only at most one out-going edge of one state can be selected.
-                    only_at_most_one_outgoing_edge_of_one_state_can_be_selected(EQ, eq.id(), i, j);
+                    expv.append(only_at_most_one_outgoing_edge_of_one_state_can_be_selected(EQ, eq.id(), i, j));
 
                     // 4th: selection of self edges or out-going edges implies selection of in-coming edges
-                    selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(EQ, eq.id(), i, j);
+                    expv.append(selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(EQ, eq.id(), i, j));
                 }
             }
 
             // 5th: at least one in-coming edge of final state should be selected.
-            at_least_one_incoming_edge_of_final_state_should_be_selected(EQ, eq.id());
+            expv.append(at_least_one_incoming_edge_of_final_state_should_be_selected(EQ, eq.id()));
 
             // 6th: sum of edges for a single loop on the PFA must be mapped back to the original FA.
-            sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(EQ, eq.id());
+            expv.append(sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(EQ, eq.id()));
 
             // 7th: len(x) == sum_i { len(x_i) * times(x_i) }
-            length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(eq.ls, size);
-            length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(eq.rs, size);
+            expv.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(eq.ls, size));
+            expv.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(eq.rs, size));
 
             change = true;
         }
     }
+    add_axiom(mk_literal(m.mk_and(expv)));
     return change;
 }
 

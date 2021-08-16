@@ -501,14 +501,13 @@ namespace smt {
         bool can_be_a_valid_sync_loop(int i, int j);
         void from_word_term_to_FA(const expr_ref_vector &term, int p, struct FA &FA);
         void from_nq_bridge_to_FA(const std::pair<int, int> &id, int mode, int p, struct FA &FA);
-        template <typename T> void if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(int type, const T &id, int i, int j);
-        template <typename T> void if_a_loop_is_taken_then_its_counter_should_be_nonnegative(int type, const T &id, int i, int j);
-        template <typename T> void only_at_most_one_incoming_edge_of_one_state_can_be_selected(int type, const T &id, int i, int j);
-        template <typename T> void only_at_most_one_outgoing_edge_of_one_state_can_be_selected(int type, const T &id, int i, int j);
-        template <typename T> void selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(int type, const T &id, int i, int j);
-        template <typename T> void at_least_one_incoming_edge_of_final_state_should_be_selected(int type, const T &id);
-        template <typename T> void sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(int type, const T &id);
-        void length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const expr_ref_vector &term, int p);
+        template <typename T> expr_ref_vector if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(int type, const T &id, int i, int j);
+        template <typename T> expr_ref_vector only_at_most_one_incoming_edge_of_one_state_can_be_selected(int type, const T &id, int i, int j);
+        template <typename T> expr_ref_vector only_at_most_one_outgoing_edge_of_one_state_can_be_selected(int type, const T &id, int i, int j);
+        template <typename T> expr_ref_vector selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(int type, const T &id, int i, int j);
+        template <typename T> expr_ref_vector at_least_one_incoming_edge_of_final_state_should_be_selected(int type, const T &id);
+        template <typename T> expr_ref_vector sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(int type, const T &id);
+        expr_ref_vector length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const expr_ref_vector &term, int p);
         /***************************************************************************************************/
 
         // final check 
