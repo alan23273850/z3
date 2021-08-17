@@ -973,11 +973,12 @@ namespace seq {
         expr_ref x = m_sk.mk("seq.suffix.x", s, t);
         expr_ref y = m_sk.mk("seq.suffix.y", s, t);
         expr_ref z = m_sk.mk("seq.suffix.z", s, t);
-        expr_ref c = m_sk.mk("seq.suffix.c", s, t, char_sort);
-        expr_ref d = m_sk.mk("seq.suffix.d", s, t, char_sort);
-        add_clause(lit, s_gt_t, mk_seq_eq(s, mk_concat(y, seq.str.mk_unit(c), x)));
-        add_clause(lit, s_gt_t, mk_seq_eq(t, mk_concat(z, seq.str.mk_unit(d), x)));
-        add_clause(lit, s_gt_t, ~mk_eq(c, d));
+        expr_ref c = m_sk.mk("seq.suffix.c", s, t);
+        expr_ref d = m_sk.mk("seq.suffix.d", s, t);
+        add_clause(lit, s_gt_t, mk_seq_eq(s, mk_concat(y, c, x)));
+        add_clause(lit, s_gt_t, mk_seq_eq(t, mk_concat(z, d, x)));
+        add_clause(lit, s_gt_t, mk_eq(mk_len(c), mk_len(d)));
+        add_clause(lit, s_gt_t, expr_ref(m.mk_not(m.mk_eq(c, d)),m));
 #endif
     }
 
@@ -1001,11 +1002,13 @@ namespace seq {
         expr_ref x = m_sk.mk("seq.prefix.x", s, t);
         expr_ref y = m_sk.mk("seq.prefix.y", s, t);
         expr_ref z = m_sk.mk("seq.prefix.z", s, t);
-        expr_ref c = m_sk.mk("seq.prefix.c", s, t, char_sort);
-        expr_ref d = m_sk.mk("seq.prefix.d", s, t, char_sort);
-        add_clause(lit, s_gt_t, mk_seq_eq(s, mk_concat(x, seq.str.mk_unit(c), y)));
-        add_clause(lit, s_gt_t, mk_seq_eq(t, mk_concat(x, seq.str.mk_unit(d), z)), mk_seq_eq(t, x));
-        add_clause(lit, s_gt_t, ~mk_eq(c, d));
+        expr_ref c = m_sk.mk("seq.prefix.c", s, t);
+        expr_ref d = m_sk.mk("seq.prefix.d", s, t);
+        add_clause(lit, s_gt_t, mk_seq_eq(s, mk_concat(x, c, y)));
+        add_clause(lit, s_gt_t, mk_seq_eq(t, mk_concat(x, d, z)));
+        add_clause(lit, s_gt_t, mk_eq(mk_len(c), mk_len(d)));
+        add_clause(lit, s_gt_t, expr_ref(m.mk_not(m.mk_eq(c, d)),m));
+
 #endif
     }
 
