@@ -844,9 +844,18 @@ final_check_status theory_seq::final_check_eh() {
     m_new_propagation = false;
     TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
     TRACE("seq_verbose", ctx.display(tout););
-    handle_disequalities(segment_size);
-    // flatten_equalities(segment_size);
-    if (m_eqs.size()>0 || m_ncs.size()>0 || m_rcs.size()>0)
+
+    if (flatten_equalities(segment_size)) {
+        TRACEFIN("flatten_equalities");
+        return FC_CONTINUE;
+    }
+
+    if (handle_disequalities(segment_size)) {
+        TRACEFIN("handle_disequalities");
+        return FC_CONTINUE;
+    }
+
+    if (m_ncs.size()>0 || m_rcs.size()>0)
         return FC_GIVEUP;
 
     final_check_status arith_fc_status = m_arith_value.final_check();
