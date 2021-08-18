@@ -512,8 +512,8 @@ namespace smt {
 
         // final check 
         void block_curr_assignment();
-        bool handle_disequalities(int size);
-        bool flatten_equalities(int size);
+        expr_ref_vector handle_disequalities(int size);
+        expr_ref_vector flatten_equalities(int size);
         void print_model(int size);
         bool check_parikh_image();       // propagate check_parikh_image equalities
         bool simplify_and_solve_eqs();   // solve unitary equalities

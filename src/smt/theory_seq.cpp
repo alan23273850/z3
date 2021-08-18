@@ -110,6 +110,65 @@ Outline:
 
 using namespace smt;
 
+class int_expr_solver:expr_solver {
+    bool initialized;
+    ast_manager& m;
+    kernel m_kernel;
+    // expr_ref_vector erv;
+
+public:
+    int_expr_solver(ast_manager& m, smt_params fp):
+        initialized(false), m(m), m_kernel(m, fp) { //, erv(m) {
+        fp.m_string_solver = symbol("none");
+    }
+
+    void assert_expr(expr *e) {
+        // erv.push_back(v);
+        m_kernel.assert_expr(e);
+    }
+
+    void assert_expr(const expr_ref_vector &v) {
+        // erv.append(v);
+        m_kernel.assert_expr(v);
+    }
+
+    void initialize(context &ctx) {
+        bool on_screen = false;
+        if (!initialized) {
+            initialized = true;
+            expr_ref_vector Assigns(m), Literals(m);
+            ctx.get_guessed_literals(Literals);
+            ctx.get_assignments(Assigns);
+            for (unsigned i = 0; i < ctx.get_num_asserted_formulas(); ++i) {
+                if (on_screen) std::cout << "check_sat context from asserted:" << mk_pp(ctx.get_asserted_formula(i), m) << std::endl;
+                assert_expr(ctx.get_asserted_formula(i));
+            }
+            for (auto &e:Assigns) {
+                if (ctx.is_relevant(e)) {
+                    if (on_screen) std::cout << "check_sat context from assign:" << mk_pp(e, m) << std::endl;
+                    assert_expr(e);
+                }
+                if (on_screen) std::cout << "is relevant: " << ctx.is_relevant(e) << " get_assignment: " << ctx.get_assignment(e) << std::endl;
+            }
+            // for (auto & e : Literals) {
+            //     if (ctx.is_relevant(e)) {
+            //         if (on_screen) std::cout << "check_sat context from guess:" << mk_pp(e, m) << std::endl;
+            //         assert_expr(e);
+            //     }
+            //     if (on_screen) std::cout << "is relevant: " << ctx.is_relevant(e) << " get_assignment: "<< ctx.get_assignment(e) << std::endl;
+            // }
+        }
+    }
+    lbool check_sat(expr *v) {
+        lbool r = m_kernel.check(1, &v);
+        return r;
+    }
+    lbool check_sat(const expr_ref_vector &v) {
+        lbool r = m_kernel.check(v);
+        return r;
+    }
+};
+
 void theory_seq::solution_map::update(expr* e, expr* r, dependency* d) {
     if (e == r) {
         return;
@@ -338,14 +397,13 @@ void theory_seq::block_curr_assignment() {
         expr *const e = m_util.re.mk_in_re(rc.term(),rc.re());
         refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
     }
-    for (const auto& nc : m_ncs){
+    for (const auto& nc : m_ncs) {
         expr *const e = m.mk_not(nc.contains());
         refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
     }
-    if (refinement != nullptr){
+    if (refinement != nullptr) {
         add_axiom(mk_literal(m.mk_not(refinement)));
-        FINALCHECK(mk_pp(refinement,m) << '\n';)
-
+        FINALCHECK(mk_pp(refinement, m) << '\n';)
     }
     FINALCHECK(__LINE__ << " leave " << __FUNCTION__ << std::endl;)
 }
@@ -382,13 +440,14 @@ expr_ref theory_seq::mk_nq_counter(const std::pair<int, int> &id, int part, int 
     return result;
 }
 
-bool theory_seq::handle_disequalities(int size) {
-    bool change = false;
+expr_ref_vector theory_seq::handle_disequalities(int size) {
+    // bool change = false;
+    expr_ref_vector add_axiom(m);
     for (unsigned i=0; i<m_nqs.size(); i++) {
         ne &nq = m_nqs.ref(i);
         const auto id_pair = std::make_pair(std::min(nq.l().get()->get_id(), nq.r().get()->get_id()), std::max(nq.l().get()->get_id(), nq.r().get()->get_id()));
-        if (!m_nqids.contains(id_pair)) {
-            m_nqids.push_back(id_pair);
+        // if (!m_nqids.contains(id_pair)) {
+            // m_nqids.push_back(id_pair);
 
             expr_ref_vector expv(m);
 
@@ -462,14 +521,15 @@ bool theory_seq::handle_disequalities(int size) {
                                         m.mk_and(m_autil.mk_eq(mk_nq_counter(id_pair, DIFF_LHS, 0), m_autil.mk_int(1)),
                                                  m_autil.mk_eq(mk_nq_counter(id_pair, DIFF_RHS, 0), m_autil.mk_int(1)),
                                                  m.mk_not(m_autil.mk_eq(mk_nq_char(id_pair, DIFF_LHS, 0), mk_nq_char(id_pair, DIFF_RHS, 0))))), m);
-            add_axiom(mk_literal(diff_length), mk_literal(diff_char));
+            // add_axiom(mk_literal(diff_length), mk_literal(diff_char));
+            add_axiom.push_back(m.mk_or(diff_length, diff_char));
             FINALCHECK("diff_length_or_diff_character:\n";);
             FINALCHECK(mk_pp(diff_length, m) << " or " << mk_pp(diff_char, m) << "\n";);
             /***************************************************************************************/
-            change = true;
-        }
+            // change = true;
+        // }
     }
-    return change;
+    return add_axiom;
 }
 
 int theory_seq::atom_is_const_char_unicode(expr *const e) {
@@ -684,15 +744,14 @@ expr_ref_vector theory_seq::length_of_string_variable_equals_sum_of_loop_length_
     return expv;
 }
 
-bool theory_seq::flatten_equalities(int size) {
-    bool change = false;
-    expr_ref_vector expv(m);
+expr_ref_vector theory_seq::flatten_equalities(int size) {
+    expr_ref_vector add_axiom(m);
     for (auto const& eq: m_rep) {
         if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
             eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
             const auto id_pair = std::make_pair(std::min(eq.v->get_id(), eq.e->get_id()), std::max(eq.v->get_id(), eq.e->get_id()));
-            if (!m_repids.contains(id_pair)) {
-                m_repids.push_back(id_pair);
+            // if (!m_repids.contains(id_pair)) {
+            //     m_repids.push_back(id_pair);
                 expr_ref_vector lhs(m);
                 m_util.str.get_concat(eq.v, lhs);
                 from_word_term_to_FA(lhs, size, FA_left);
@@ -706,36 +765,34 @@ bool theory_seq::flatten_equalities(int size) {
                 for (unsigned i = 0; i < FA_left.size(); i++) {
                     for (unsigned j = 0; j < FA_right.size(); j++) {
                         // 1st: for each possibly valid sync loop, the two characters on that loop must be the same.
-                        expv.append(if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(REP, id_pair, i, j));
+                        add_axiom.append(if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(REP, id_pair, i, j));
 
                         // 2nd: only at most one in-coming edge of one state can be selected.
-                        expv.append(only_at_most_one_incoming_edge_of_one_state_can_be_selected(REP, id_pair, i, j));
+                        add_axiom.append(only_at_most_one_incoming_edge_of_one_state_can_be_selected(REP, id_pair, i, j));
 
                         // 3rd: only at most one out-going edge of one state can be selected.
-                        expv.append(only_at_most_one_outgoing_edge_of_one_state_can_be_selected(REP, id_pair, i, j));
+                        add_axiom.append(only_at_most_one_outgoing_edge_of_one_state_can_be_selected(REP, id_pair, i, j));
 
                         // 4th: selection of self edges or out-going edges implies selection of in-coming edges
-                        expv.append(selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(REP, id_pair, i, j));
+                        add_axiom.append(selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(REP, id_pair, i, j));
                     }
                 }
 
                 // 5th: at least one in-coming edge of final state should be selected.
-                expv.append(at_least_one_incoming_edge_of_final_state_should_be_selected(REP, id_pair));
+                add_axiom.append(at_least_one_incoming_edge_of_final_state_should_be_selected(REP, id_pair));
 
                 // 6th: sum of edges for a single loop on the PFA must be mapped back to the original FA.
-                expv.append(sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(REP, id_pair));
+                add_axiom.append(sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(REP, id_pair));
 
                 // 7th: len(x) == sum_i { len(x_i) * times(x_i) }
-                expv.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(lhs, size));
-                expv.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(rhs, size));
-
-                change = true;
-            }
+                add_axiom.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(lhs, size));
+                add_axiom.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(rhs, size));
+            // }
         }
     }
     for (const auto &eq: m_eqs) {
-        if(!m_flattened_eqids.contains(eq.id())) {
-            m_flattened_eqids.push_back(eq.id());
+        // if(!m_flattened_eqids.contains(eq.id())) {
+        //     m_flattened_eqids.push_back(eq.id());
 
             // display_equation(std::cout, eq);
 
@@ -748,34 +805,31 @@ bool theory_seq::flatten_equalities(int size) {
             for (unsigned i = 0; i < FA_left.size(); i++) {
                 for (unsigned j = 0; j < FA_right.size(); j++) {
                     // 1st: for each possibly valid sync loop, the two characters on that loop must be the same.
-                    expv.append(if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(EQ, eq.id(), i, j));
+                    add_axiom.append(if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(EQ, eq.id(), i, j));
 
                     // 2nd: only at most one in-coming edge of one state can be selected.
-                    expv.append(only_at_most_one_incoming_edge_of_one_state_can_be_selected(EQ, eq.id(), i, j));
+                    add_axiom.append(only_at_most_one_incoming_edge_of_one_state_can_be_selected(EQ, eq.id(), i, j));
 
                     // 3rd: only at most one out-going edge of one state can be selected.
-                    expv.append(only_at_most_one_outgoing_edge_of_one_state_can_be_selected(EQ, eq.id(), i, j));
+                    add_axiom.append(only_at_most_one_outgoing_edge_of_one_state_can_be_selected(EQ, eq.id(), i, j));
 
                     // 4th: selection of self edges or out-going edges implies selection of in-coming edges
-                    expv.append(selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(EQ, eq.id(), i, j));
+                    add_axiom.append(selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(EQ, eq.id(), i, j));
                 }
             }
 
             // 5th: at least one in-coming edge of final state should be selected.
-            expv.append(at_least_one_incoming_edge_of_final_state_should_be_selected(EQ, eq.id()));
+            add_axiom.append(at_least_one_incoming_edge_of_final_state_should_be_selected(EQ, eq.id()));
 
             // 6th: sum of edges for a single loop on the PFA must be mapped back to the original FA.
-            expv.append(sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(EQ, eq.id()));
+            add_axiom.append(sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(EQ, eq.id()));
 
             // 7th: len(x) == sum_i { len(x_i) * times(x_i) }
-            expv.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(eq.ls, size));
-            expv.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(eq.rs, size));
-
-            change = true;
-        }
+            add_axiom.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(eq.ls, size));
+            add_axiom.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(eq.rs, size));
+        // }
     }
-    add_axiom(mk_literal(m.mk_and(expv)));
-    return change;
+    return add_axiom;
 }
 
 // TODO: do all const char exprs carrying the same character have the same pointer or id?
@@ -838,6 +892,9 @@ final_check_status theory_seq::final_check_eh() {
         return FC_DONE;
     }
 
+    if (m_ncs.size()>0 || m_rcs.size()>0)
+        return FC_GIVEUP;
+
     if (is_debug_enabled("assignment")) ctx.display_assignment(std::cout);
     int segment_size = stoi(gparams::get_value("segment"));
 
@@ -845,18 +902,27 @@ final_check_status theory_seq::final_check_eh() {
     TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
     TRACE("seq_verbose", ctx.display(tout););
 
-    if (flatten_equalities(segment_size)) {
-        TRACEFIN("flatten_equalities");
+    expr_ref_vector add_axiom(m);
+
+    add_axiom.append(flatten_equalities(segment_size));
+
+    add_axiom.append(handle_disequalities(segment_size));
+
+    int_expr_solver ies(m, get_fparams());
+    ies.initialize(ctx);
+    lbool result = ies.check_sat(add_axiom);
+    // std::cout << result << "\n";
+
+    if (result == l_true) {
+        return FC_DONE;
+    }
+    else if (result == l_false) {
+        block_curr_assignment();
         return FC_CONTINUE;
     }
-
-    if (handle_disequalities(segment_size)) {
-        TRACEFIN("handle_disequalities");
-        return FC_CONTINUE;
+    else {
+        SASSERT(false);
     }
-
-    if (m_ncs.size()>0 || m_rcs.size()>0)
-        return FC_GIVEUP;
 
     final_check_status arith_fc_status = m_arith_value.final_check();
     if (arith_fc_status == FC_DONE) {
