@@ -384,6 +384,13 @@ void theory_seq::block_curr_assignment() {
 
     expr *refinement = nullptr;
     FINALCHECK(__LINE__ << "[Refinement]\nformulas:\n";)
+    for (const auto& eq : m_rep) {
+        if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
+            eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
+            expr *const e = m.mk_eq(eq.v, eq.e);
+            refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
+        }
+    }
     for (const auto& we : m_eqs) {
         expr *const e = m.mk_eq(mk_concat(we.ls), mk_concat(we.rs));
         refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
