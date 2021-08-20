@@ -114,22 +114,22 @@ class int_expr_solver:expr_solver {
     bool initialized;
     ast_manager& m;
     kernel m_kernel;
-    // expr_ref_vector erv;
+    expr_ref_vector erv;
 
 public:
     int_expr_solver(ast_manager& m, smt_params fp):
-        initialized(false), m(m), m_kernel(m, fp) { //, erv(m) {
+        initialized(false), m(m), m_kernel(m, fp), erv(m) {
         fp.m_string_solver = symbol("none");
     }
 
     void assert_expr(expr *e) {
-        // erv.push_back(v);
-        m_kernel.assert_expr(e);
+        erv.push_back(e);
+        // m_kernel.assert_expr(e);
     }
 
     void assert_expr(const expr_ref_vector &v) {
-        // erv.append(v);
-        m_kernel.assert_expr(v);
+        erv.append(v);
+        // m_kernel.assert_expr(v);
     }
 
     void initialize(context &ctx) {
@@ -160,11 +160,13 @@ public:
         }
     }
     lbool check_sat(expr *v) {
+        SASSERT(false);
         lbool r = m_kernel.check(1, &v);
         return r;
     }
     lbool check_sat(const expr_ref_vector &v) {
-        lbool r = m_kernel.check(v);
+        erv.append(v);
+        lbool r = m_kernel.check(erv);
         return r;
     }
 };
@@ -451,8 +453,9 @@ expr_ref_vector theory_seq::handle_disequalities(int size) {
     // bool change = false;
     expr_ref_vector add_axiom(m);
     for (unsigned i=0; i<m_nqs.size(); i++) {
-        ne &nq = m_nqs.ref(i);
-        const auto id_pair = std::make_pair(std::min(nq.l().get()->get_id(), nq.r().get()->get_id()), std::max(nq.l().get()->get_id(), nq.r().get()->get_id()));
+        ne &nq = m_nqs.ref(i); // display_disequation(std::cout, nq);
+        const auto id_pair = std::make_pair(nq.l().get()->get_id(), nq.r().get()->get_id());
+        // const auto id_pair = std::make_pair(std::min(nq.l().get()->get_id(), nq.r().get()->get_id()), std::max(nq.l().get()->get_id(), nq.r().get()->get_id()));
         // if (!m_nqids.contains(id_pair)) {
             // m_nqids.push_back(id_pair);
 
@@ -755,8 +758,9 @@ expr_ref_vector theory_seq::flatten_equalities(int size) {
     expr_ref_vector add_axiom(m);
     for (auto const& eq: m_rep) {
         if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
-            eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
-            const auto id_pair = std::make_pair(std::min(eq.v->get_id(), eq.e->get_id()), std::max(eq.v->get_id(), eq.e->get_id()));
+            eq.e && eq.e->get_sort()==m_util.mk_string_sort()) { // std::cout << mk_pp(eq.v, m) << " = " << mk_pp(eq.e, m) << "\n";
+            const auto id_pair = std::make_pair(eq.v->get_id(), eq.e->get_id());
+            // const auto id_pair = std::make_pair(std::min(eq.v->get_id(), eq.e->get_id()), std::max(eq.v->get_id(), eq.e->get_id()));
             // if (!m_repids.contains(id_pair)) {
             //     m_repids.push_back(id_pair);
                 expr_ref_vector lhs(m);
@@ -797,7 +801,7 @@ expr_ref_vector theory_seq::flatten_equalities(int size) {
             // }
         }
     }
-    for (const auto &eq: m_eqs) {
+    for (const auto &eq: m_eqs) { // display_equation(std::cout, eq);
         // if(!m_flattened_eqids.contains(eq.id())) {
         //     m_flattened_eqids.push_back(eq.id());
 
@@ -924,6 +928,10 @@ final_check_status theory_seq::final_check_eh() {
         return FC_DONE;
     }
     else if (result == l_false) {
+        // std::cout << "UNSAT core:\n";
+        // for (unsigned i=0; i<ies.m_kernel.get_unsat_core_size(); i++) {
+        //     std::cout << mk_pp(ies.m_kernel.get_unsat_core_expr(i), m) << std::endl;
+        // }
         block_curr_assignment();
         return FC_CONTINUE;
     }
