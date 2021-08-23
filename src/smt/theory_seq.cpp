@@ -346,6 +346,7 @@ theory_seq::theory_seq(context& ctx):
     m_has_seq(m_util.has_seq()),
     m_new_solution(false),
     m_new_propagation(false),
+    m_is_underapproximation(false),
     FA_left(m),
     FA_right(m) {
 }
@@ -452,6 +453,7 @@ expr_ref_vector theory_seq::handle_disequalities(int size) {
     // bool change = false;
     expr_ref_vector add_axiom(m);
     for (unsigned i=0; i<m_nqs.size(); i++) {
+        m_is_underapproximation = true;
         ne &nq = m_nqs.ref(i); // display_disequation(std::cout, nq);
         const auto id_pair = std::make_pair(nq.l().get()->get_id(), nq.r().get()->get_id());
         // const auto id_pair = std::make_pair(std::min(nq.l().get()->get_id(), nq.r().get()->get_id()), std::max(nq.l().get()->get_id(), nq.r().get()->get_id()));
@@ -758,6 +760,7 @@ expr_ref_vector theory_seq::flatten_equalities(int size) {
     for (auto const& eq: m_rep) {
         if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
             eq.e && eq.e->get_sort()==m_util.mk_string_sort()) { // std::cout << mk_pp(eq.v, m) << " = " << mk_pp(eq.e, m) << "\n";
+            m_is_underapproximation = true;
             const auto id_pair = std::make_pair(eq.v->get_id(), eq.e->get_id());
             // const auto id_pair = std::make_pair(std::min(eq.v->get_id(), eq.e->get_id()), std::max(eq.v->get_id(), eq.e->get_id()));
             // if (!m_repids.contains(id_pair)) {
@@ -801,6 +804,7 @@ expr_ref_vector theory_seq::flatten_equalities(int size) {
         }
     }
     for (const auto &eq: m_eqs) { // display_equation(std::cout, eq);
+        m_is_underapproximation = true;
         // if(!m_flattened_eqids.contains(eq.id())) {
         //     m_flattened_eqids.push_back(eq.id());
 
@@ -906,174 +910,172 @@ final_check_status theory_seq::final_check_eh() {
         return FC_GIVEUP;
 
     if (is_debug_enabled("assignment")) ctx.display_assignment(std::cout);
-    int segment_size = stoi(gparams::get_value("segment"));
 
     m_new_propagation = false;
     TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
     TRACE("seq_verbose", ctx.display(tout););
 
-    expr_ref_vector add_axiom(m);
-
-    add_axiom.append(flatten_equalities(segment_size));
-
-    add_axiom.append(handle_disequalities(segment_size));
-
-    int_expr_solver ies(m, get_fparams());
-    ies.initialize(ctx);
-    lbool result = ies.check_sat(add_axiom);
-    // std::cout << result << "\n";
-
-    if (result == l_true) {
-        return FC_DONE;
-    }
-    else if (result == l_false) {
-        // std::cout << "UNSAT core:\n";
-        // for (unsigned i=0; i<ies.m_kernel.get_unsat_core_size(); i++) {
-        //     std::cout << mk_pp(ies.m_kernel.get_unsat_core_expr(i), m) << std::endl;
-        // }
-        block_curr_assignment();
-        return FC_CONTINUE;
-    }
-    else {
-        SASSERT(false);
-    }
-
-    final_check_status arith_fc_status = m_arith_value.final_check();
-    if (arith_fc_status == FC_DONE) {
-        for (const auto &eq: m_rep) {
-            if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
-                eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
-                DISPLAYMODEL("(m_rep) =====================\n";);
-                int mode = 0;
-                for (const auto &t: {eq.v, eq.e}) {
-                    DISPLAYMODEL((!mode ? "LHS: " : "RHS: "););// << mk_pp(t, m) << " == ";);
-                    expr_ref_vector term(m);
-                    m_util.str.get_concat(t, term);
-                    for (const auto &atom: term) {
-                        int ch;
-                        if ((ch = atom_is_const_char_unicode(atom)) < 0) {
-                            rational _counter, _unicode;
-                            DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
-                            for (int i=0; i<segment_size; i++) {
-                                if (!get_num_value(mk_FA_self_loop_counter(atom, i), _counter))
-                                    SASSERT(false);
-                                if (!get_num_value(mk_FA_self_loop_char(atom, i), _unicode))
-                                    SASSERT(false);
-                                for (int j=0; j<_counter; j++) {
-                                    DISPLAYMODEL("(" << _unicode << ")";);
-                                }
-                            }
-                            DISPLAYMODEL("]";);
-                        } else
-                            DISPLAYMODEL("(" << ch << ")";);
-                    }
-                    if (!mode) DISPLAYMODEL("\n==";);
-                    mode++;
-                    DISPLAYMODEL("\n";);
-                }
-                DISPLAYMODEL("=====================\n";);
-            }
+    for (int segment_size = 1; segment_size <= 8; segment_size *= 2) {
+        expr_ref_vector add_axiom(m);
+        add_axiom.append(flatten_equalities(segment_size));
+        add_axiom.append(handle_disequalities(segment_size));
+        int_expr_solver ies(m, get_fparams());
+        ies.initialize(ctx);
+        lbool result = ies.check_sat(add_axiom);
+        // std::cout << result << "\n";
+        if (result == l_true) {
+            return FC_DONE;
         }
-        for (const auto &eq: m_eqs) {
-            DISPLAYMODEL("(m_eqs) =====================\n";);
-            int mode = 0;
-            for (const auto &term: {eq.ls, eq.rs}) {
-                DISPLAYMODEL((!mode ? "LHS: " : "RHS: "););
-                for (const auto &atom: term) {
-                    int ch;
-                    if ((ch = atom_is_const_char_unicode(atom)) < 0) {
-                        rational _counter, _unicode;
-                        DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
-                        for (int i=0; i<segment_size; i++) {
-                            if (!get_num_value(mk_FA_self_loop_counter(atom, i), _counter))
-                                SASSERT(false);
-                            if (!get_num_value(mk_FA_self_loop_char(atom, i), _unicode))
-                                SASSERT(false);
-                            for (int j=0; j<_counter; j++) {
-                                DISPLAYMODEL("(" << _unicode << ")";);
-                            }
-                        }
-                        DISPLAYMODEL("]";);
-                    } else
-                        DISPLAYMODEL("(" << ch << ")";);
-                }
-                if (!mode) DISPLAYMODEL("\n==";);
-                mode++;
-                DISPLAYMODEL("\n";);
-            }
-            DISPLAYMODEL("=====================\n";);
-        }
-        for (const auto &nq: m_nqs) {
-            DISPLAYMODEL("(m_nqs) =====================\n";);
-            int mode = 0, index[][3] = {{PREFIX, DIFF_LHS, SUFFIX_LHS}, {PREFIX, DIFF_RHS, SUFFIX_RHS}};
-            for (const auto &t: {nq.l(), nq.r()}) {
-                DISPLAYMODEL((!mode ? "LHS: " : "RHS: "););// << mk_pp(t, m) << " == ";);
-                expr_ref_vector term(m);
-                m_util.str.get_concat(t, term);
-                for (const auto &atom: term) {
-                    int ch;
-                    if ((ch = atom_is_const_char_unicode(atom)) < 0) {
-                        rational _counter, _unicode;
-                        DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
-                        for (int i=0; i<segment_size; i++) {
-                            if (!get_num_value(mk_FA_self_loop_counter(atom, i), _counter))
-                                SASSERT(false);
-                            if (!get_num_value(mk_FA_self_loop_char(atom, i), _unicode))
-                                SASSERT(false);
-                            for (int j=0; j<_counter; j++) {
-                                DISPLAYMODEL("(" << _unicode << ")";);
-                            }
-                        }
-                        DISPLAYMODEL("]";);
-                    } else
-                        DISPLAYMODEL("(" << ch << ")";);
-                }
-                // DISPLAYMODEL(" == ";);
-                // rational _counter, _unicode;
-                // for (int part=0; part<3; part++) {
-                //     if (part == 1) {
-                //         if (!get_num_value(mk_nq_char(id_pair, index[mode][part], 0), _unicode))
-                //             SASSERT(false);
-                //         DISPLAYMODEL("(" << _unicode << ")";);
-                //     }
-                //     else
-                //         for (int p=0; p<segment_size; p++) {
-                //             if (!get_num_value(mk_nq_counter(id_pair, index[mode][part], p), _counter))
-                //                 SASSERT(false);
-                //             if (!get_num_value(mk_nq_char(id_pair, index[mode][part], p), _unicode))
-                //                 SASSERT(false);
-                //             for (int j=0; j<_counter; j++) {
-                //                 DISPLAYMODEL("(" << _unicode << ")";);
-                //             }
-                //         }
-                // }
-                if (!mode) DISPLAYMODEL("\n!=";);
-                mode++;
-                DISPLAYMODEL("\n";);
-            }
-            DISPLAYMODEL("=====================\n";);
-            // for (const auto &t: {nq.l(), nq.r()}) {
-            //     expr_ref_vector term(m);
-            //     m_util.str.get_concat(t, term);
-            //     for (const auto &atom: term) {
-            //         if (atom_is_const_char_unicode(atom) < 0) {
-            //             rational _counter, _unicode;
-            //             DISPLAYMODEL("[" << mk_pp(atom, m) << "] ==> ";);
-            //             for (int i=0; i<segment_size; i++) {
-            //                 get_num_value(mk_FA_self_loop_counter(atom, i), _counter);
-            //                 get_num_value(mk_FA_self_loop_char(atom, i), _unicode);
-            //                 for (int j=0; j<_counter; j++) {
-            //                     DISPLAYMODEL(_unicode;);
-            //                 }
-            //             }
-            //             DISPLAYMODEL("\n";);
-            //         }
-            //     }
+        else if (result == l_false) {
+            if (segment_size < 8) continue;
+            // std::cout << "UNSAT core:\n";
+            // for (unsigned i=0; i<ies.m_kernel.get_unsat_core_size(); i++) {
+            //     std::cout << mk_pp(ies.m_kernel.get_unsat_core_expr(i), m) << std::endl;
             // }
+            block_curr_assignment();
+            return FC_CONTINUE;
+        }
+        else {
+            SASSERT(false);
         }
     }
-    FINALCHECK("\n";);
-    return FC_DONE;
+
+    // final_check_status arith_fc_status = m_arith_value.final_check();
+    // if (arith_fc_status == FC_DONE) {
+    //     for (const auto &eq: m_rep) {
+    //         if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
+    //             eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
+    //             DISPLAYMODEL("(m_rep) =====================\n";);
+    //             int mode = 0;
+    //             for (const auto &t: {eq.v, eq.e}) {
+    //                 DISPLAYMODEL((!mode ? "LHS: " : "RHS: "););// << mk_pp(t, m) << " == ";);
+    //                 expr_ref_vector term(m);
+    //                 m_util.str.get_concat(t, term);
+    //                 for (const auto &atom: term) {
+    //                     int ch;
+    //                     if ((ch = atom_is_const_char_unicode(atom)) < 0) {
+    //                         rational _counter, _unicode;
+    //                         DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
+    //                         for (int i=0; i<segment_size; i++) {
+    //                             if (!get_num_value(mk_FA_self_loop_counter(atom, i), _counter))
+    //                                 SASSERT(false);
+    //                             if (!get_num_value(mk_FA_self_loop_char(atom, i), _unicode))
+    //                                 SASSERT(false);
+    //                             for (int j=0; j<_counter; j++) {
+    //                                 DISPLAYMODEL("(" << _unicode << ")";);
+    //                             }
+    //                         }
+    //                         DISPLAYMODEL("]";);
+    //                     } else
+    //                         DISPLAYMODEL("(" << ch << ")";);
+    //                 }
+    //                 if (!mode) DISPLAYMODEL("\n==";);
+    //                 mode++;
+    //                 DISPLAYMODEL("\n";);
+    //             }
+    //             DISPLAYMODEL("=====================\n";);
+    //         }
+    //     }
+    //     for (const auto &eq: m_eqs) {
+    //         DISPLAYMODEL("(m_eqs) =====================\n";);
+    //         int mode = 0;
+    //         for (const auto &term: {eq.ls, eq.rs}) {
+    //             DISPLAYMODEL((!mode ? "LHS: " : "RHS: "););
+    //             for (const auto &atom: term) {
+    //                 int ch;
+    //                 if ((ch = atom_is_const_char_unicode(atom)) < 0) {
+    //                     rational _counter, _unicode;
+    //                     DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
+    //                     for (int i=0; i<segment_size; i++) {
+    //                         if (!get_num_value(mk_FA_self_loop_counter(atom, i), _counter))
+    //                             SASSERT(false);
+    //                         if (!get_num_value(mk_FA_self_loop_char(atom, i), _unicode))
+    //                             SASSERT(false);
+    //                         for (int j=0; j<_counter; j++) {
+    //                             DISPLAYMODEL("(" << _unicode << ")";);
+    //                         }
+    //                     }
+    //                     DISPLAYMODEL("]";);
+    //                 } else
+    //                     DISPLAYMODEL("(" << ch << ")";);
+    //             }
+    //             if (!mode) DISPLAYMODEL("\n==";);
+    //             mode++;
+    //             DISPLAYMODEL("\n";);
+    //         }
+    //         DISPLAYMODEL("=====================\n";);
+    //     }
+    //     for (const auto &nq: m_nqs) {
+    //         DISPLAYMODEL("(m_nqs) =====================\n";);
+    //         int mode = 0, index[][3] = {{PREFIX, DIFF_LHS, SUFFIX_LHS}, {PREFIX, DIFF_RHS, SUFFIX_RHS}};
+    //         for (const auto &t: {nq.l(), nq.r()}) {
+    //             DISPLAYMODEL((!mode ? "LHS: " : "RHS: "););// << mk_pp(t, m) << " == ";);
+    //             expr_ref_vector term(m);
+    //             m_util.str.get_concat(t, term);
+    //             for (const auto &atom: term) {
+    //                 int ch;
+    //                 if ((ch = atom_is_const_char_unicode(atom)) < 0) {
+    //                     rational _counter, _unicode;
+    //                     DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
+    //                     for (int i=0; i<segment_size; i++) {
+    //                         if (!get_num_value(mk_FA_self_loop_counter(atom, i), _counter))
+    //                             SASSERT(false);
+    //                         if (!get_num_value(mk_FA_self_loop_char(atom, i), _unicode))
+    //                             SASSERT(false);
+    //                         for (int j=0; j<_counter; j++) {
+    //                             DISPLAYMODEL("(" << _unicode << ")";);
+    //                         }
+    //                     }
+    //                     DISPLAYMODEL("]";);
+    //                 } else
+    //                     DISPLAYMODEL("(" << ch << ")";);
+    //             }
+    //             // DISPLAYMODEL(" == ";);
+    //             // rational _counter, _unicode;
+    //             // for (int part=0; part<3; part++) {
+    //             //     if (part == 1) {
+    //             //         if (!get_num_value(mk_nq_char(id_pair, index[mode][part], 0), _unicode))
+    //             //             SASSERT(false);
+    //             //         DISPLAYMODEL("(" << _unicode << ")";);
+    //             //     }
+    //             //     else
+    //             //         for (int p=0; p<segment_size; p++) {
+    //             //             if (!get_num_value(mk_nq_counter(id_pair, index[mode][part], p), _counter))
+    //             //                 SASSERT(false);
+    //             //             if (!get_num_value(mk_nq_char(id_pair, index[mode][part], p), _unicode))
+    //             //                 SASSERT(false);
+    //             //             for (int j=0; j<_counter; j++) {
+    //             //                 DISPLAYMODEL("(" << _unicode << ")";);
+    //             //             }
+    //             //         }
+    //             // }
+    //             if (!mode) DISPLAYMODEL("\n!=";);
+    //             mode++;
+    //             DISPLAYMODEL("\n";);
+    //         }
+    //         DISPLAYMODEL("=====================\n";);
+    //         // for (const auto &t: {nq.l(), nq.r()}) {
+    //         //     expr_ref_vector term(m);
+    //         //     m_util.str.get_concat(t, term);
+    //         //     for (const auto &atom: term) {
+    //         //         if (atom_is_const_char_unicode(atom) < 0) {
+    //         //             rational _counter, _unicode;
+    //         //             DISPLAYMODEL("[" << mk_pp(atom, m) << "] ==> ";);
+    //         //             for (int i=0; i<segment_size; i++) {
+    //         //                 get_num_value(mk_FA_self_loop_counter(atom, i), _counter);
+    //         //                 get_num_value(mk_FA_self_loop_char(atom, i), _unicode);
+    //         //                 for (int j=0; j<_counter; j++) {
+    //         //                     DISPLAYMODEL(_unicode;);
+    //         //                 }
+    //         //             }
+    //         //             DISPLAYMODEL("\n";);
+    //         //         }
+    //         //     }
+    //         // }
+    //     }
+    // }
+    // FINALCHECK("\n";);
+    // return FC_DONE;
 
     if (check_parikh_image()) {
         TRACE("seq", tout << "check_parikh_image\n";);
