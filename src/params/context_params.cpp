@@ -158,7 +158,7 @@ void context_params::collect_param_descrs(param_descrs & d) {
     d.insert("smtlib2_compliant", CPK_BOOL, "enable/disable SMT-LIB 2.0 compliance", "false");
     d.insert("stats", CPK_BOOL, "enable/disable statistics", "false");
     d.insert("unicode", CPK_BOOL, "use unicode strings instead of ASCII strings");
-    d.insert("segment", CPK_UINT, "the number of loops of a variable in a finite automaton", "8");
+    d.insert("segment", CPK_UINT, "the number of loops of a variable in a finite automaton", "0");
     // statistics are hidden as they are controlled by the /st option.
     collect_solver_param_descrs(d);
 }

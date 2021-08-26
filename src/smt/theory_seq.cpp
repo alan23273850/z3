@@ -1089,12 +1089,33 @@ void theory_seq::print_model(int size) {
     }
 }
 
+std::string header() {
+    std::stringstream ss;
+    ss << "(declare-fun seq.eq (String String) Bool)\n"
+        << "(declare-fun seq.tail (String Int) String)\n"
+        << "(declare-fun seq.prefix.c (String String) String)\n"
+        << "(declare-fun seq.prefix.d (String String) String)\n"
+        << "(declare-fun seq.prefix.x (String String) String)\n"
+        << "(declare-fun seq.prefix.y (String String) String)\n"
+        << "(declare-fun seq.prefix.z (String String) String)\n"
+        << "(declare-fun seq.pfa_loop_counter (Int Int Int Int Int) Int)\n"
+        << "(declare-fun seq.pfa_loop_counter (Int Int Int Int) Int)\n"
+        << "(declare-fun seq.fa_self_loop_char (String Int) Int)\n"
+        << "(declare-fun seq.nq_char (Int Int Int Int) Int)\n"
+        << "(declare-fun seq.pfa_edge_selection (Int Int Int Int Int Int Int) Bool)\n"
+        << "(declare-fun seq.pfa_edge_selection (Int Int Int Int Int Int) Bool)\n"
+        << "(declare-fun seq.fa_self_loop_counter (String Int) Int)\n"
+        << "(declare-fun seq.nq_counter (Int Int Int Int) Int)\n"
+        << "(declare-fun char.bit (Unicode) Bool)\n"
+        << "(declare-fun seq.unit-inv (String) Unicode)\n"
+        << "(declare-fun seq.max_unfolding () Bool)\n"
+        << "(declare-fun seq.length_limit () Bool)\n"
+        << "(declare-fun x () String)\n\n";
+    return ss.str();
+}
+
 final_check_status theory_seq::final_check_eh() {
     DEBUG("fc","level: " << ctx.get_scope_level() << "\n";)
-    // std::cout << m_eqs.size() << " " << m_nqs.size() << " " << m_ncs.size() << " " << m_rcs.size() << "\n";
-    // for (int i=0; i<m_eqs.size(); i++) display_equation(std::cout, m_eqs[i]), std::cout << "===========\n";
-    // for (int i=0; i<m_nqs.size(); i++) display_disequation(std::cout, m_nqs[i]), std::cout << "===========\n";
-    // for (int i=0; i<m_ncs.size(); i++) display_nc(std::cout, m_ncs[i]), std::cout << "===========\n";
 
     if (!m_has_seq) {
         return FC_DONE;
@@ -1103,13 +1124,76 @@ final_check_status theory_seq::final_check_eh() {
     if (m_ncs.size()>0 || m_rcs.size()>0)
         return FC_GIVEUP;
 
-    if (is_debug_enabled("assignment")) ctx.display_assignment(std::cout);
-
     m_new_propagation = false;
     TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
     TRACE("seq_verbose", ctx.display(tout););
 
-    for (int segment_size = 1; segment_size <= 8; segment_size *= 2) {
+    // std::cout << m_eqs.size() << " " << m_nqs.size() << " " << m_ncs.size() << " " << m_rcs.size() << "\n";
+    // for (int i=0; i<m_eqs.size(); i++) display_equation(std::cout, m_eqs[i]), std::cout << "===========\n";
+    // for (int i=0; i<m_nqs.size(); i++) display_disequation(std::cout, m_nqs[i]), std::cout << "===========\n";
+    // for (int i=0; i<m_ncs.size(); i++) display_nc(std::cout, m_ncs[i]), std::cout << "===========\n";
+    if (is_debug_enabled("dump_formula")) {
+        std::ofstream of;
+        of.open("formula.smt2");
+        of << header();
+        for (auto const& eq: m_rep) {
+            if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
+                eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
+                of << "(assert (= ";
+                expr_ref_vector erv(m);
+                m_util.str.get_concat_units(eq.v, erv);
+                if (erv.size() > 1) of << "(str.++ ";
+                for (expr* a : erv) { of << mk_pp(a, m); }
+                if (erv.size() > 1) of << ")";
+                of << " ";
+                erv.reset();
+                m_util.str.get_concat_units(eq.e, erv);
+                if (erv.size() > 1) of << "(str.++ ";
+                for (expr* a : erv) { of << mk_pp(a, m); }
+                if (erv.size() > 1) of << ")";
+                of << "))\n";
+            }
+        }
+        for (const auto e: m_eqs) {
+            of << "(assert (= ";
+            if (e.ls.size() > 1) of << "(str.++ ";
+            for (expr* a : e.ls) { of << mk_pp(a, m); }
+            if (e.ls.size() > 1) of << ")";
+            of << " ";
+            if (e.rs.size() > 1) of << "(str.++ ";
+            for (expr* a : e.rs) { of << mk_pp(a, m); }
+            if (e.rs.size() > 1) of << ")";
+            of << "))\n";
+        }
+        for (const auto e: m_nqs) {
+            of << "(assert (not (= ";
+            expr_ref_vector erv(m);
+            m_util.str.get_concat_units(e.l(), erv);
+            if (erv.size() > 1) of << "(str.++ ";
+            for (expr* a : erv) { of << mk_pp(a, m); }
+            if (erv.size() > 1) of << ")";
+            of << " ";
+            erv.reset();
+            m_util.str.get_concat_units(e.r(), erv);
+            if (erv.size() > 1) of << "(str.++ ";
+            for (expr* a : erv) { of << mk_pp(a, m); }
+            if (erv.size() > 1) of << ")";
+            of << ")))\n";
+        }
+        of << "\n(check-sat)\n";
+        of.close();
+    }
+
+    if (is_debug_enabled("assignment")) ctx.display_assignment(std::cout);
+
+    std::vector<int> segment_vector;
+    int segment_size = stoi(gparams::get_value("segment"));
+    if (segment_size <= 0) {
+        segment_vector.insert(segment_vector.end(), {1, 2, 4, 8});
+    } else {
+        segment_vector.push_back(segment_size);
+    }
+    for (int segment_size : segment_vector) {
         expr_ref_vector add_axiom(m);
         add_axiom.append(flatten_equalities(segment_size));
         add_axiom.append(handle_disequalities(segment_size));
@@ -1117,6 +1201,26 @@ final_check_status theory_seq::final_check_eh() {
         ies.initialize(ctx);
         lbool result = ies.check_sat(add_axiom);
         // std::cout << result << "\n";
+
+        if (is_debug_enabled("dump_flattening")) {
+            std::ofstream of;
+            of.open("flattening_" + std::to_string(segment_size) + ".smt2");
+            of << header();
+            
+            expr_ref_vector Assigns(m);
+            get_context().get_assignments(Assigns);
+            for (const auto &e : Assigns) {
+                if (ctx.is_relevant(e)) {
+                    of << "(assert " << mk_pp(e, m) << ")" << std::endl;
+                }
+            }
+            for (const auto &e : add_axiom) {
+                of << "(assert " << mk_pp(e, m) << ")" << std::endl;
+            }
+            of << "\n(check-sat)\n";
+            of.close();
+        }
+
         if (result == l_true) {
             return FC_DONE;
         }
