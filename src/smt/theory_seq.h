@@ -443,29 +443,44 @@ namespace smt {
         bool has_len_offset(expr_ref_vector const& ls, expr_ref_vector const& rs, int & diff);
 
         // formula types
-        enum formula_types {
+        enum formula_type {
             EQ,
             REP,
             DISEQ_LHS,
             DISEQ_RHS
         };
-        enum nq_bridge_parts {
+        inline const char* from_type_to_string(formula_type type) {
+            switch (type) {
+                case EQ: return "EQ";
+                case REP: return "REP";
+                case DISEQ_LHS: return "DISEQ_LHS";
+                case DISEQ_RHS: return "DISEQ_RHS";
+                default: SASSERT(false);
+            }
+            return "";
+        }
+        enum nq_bridge_part {
             PREFIX,
             DIFF_LHS,
             SUFFIX_LHS,
             DIFF_RHS,
             SUFFIX_RHS
         };
+        inline const char* from_part_to_string(nq_bridge_part type) {
+            switch (type) {
+                case PREFIX: return "PREFIX";
+                case DIFF_LHS: return "DIFF_LHS";
+                case SUFFIX_LHS: return "SUFFIX_LHS";
+                case DIFF_RHS: return "DIFF_RHS";
+                case SUFFIX_RHS: return "SUFFIX_RHS";
+                default: SASSERT(false);
+            }
+            return "";
+        }
 
         int atom_is_const_char_unicode(expr *const e);
 
         // flatten_equalities
-        enum PFA_direction {
-            LEFT_LOOP_RIGHT_LOOP,
-            LEFT_NEXT_RIGHT_LOOP,
-            LEFT_LOOP_RIGHT_NEXT,
-            LEFT_NEXT_RIGHT_NEXT
-        };
         struct FA {
             expr_ref_vector characters;
             expr_ref_vector counters;
@@ -493,21 +508,22 @@ namespace smt {
         expr_ref mk_parikh_image_counter(expr *var, int ch);
         expr_ref mk_FA_self_loop_char(expr *var, int i);
         expr_ref mk_FA_self_loop_counter(expr *var, int i);
-        template <typename T> expr_ref mk_PFA_loop_counter(int type, const T &id, int i, int j);
-        expr_ref mk_nq_char(const std::pair<int, int> &id, int part, int i);
-        expr_ref mk_nq_counter(const std::pair<int, int> &id, int part, int i);
+        template <typename T> expr_ref mk_PFA_loop_counter(formula_type type, const T &id, int i, int j);
+        template <typename T> expr_ref mk_PFA_edge_selection(formula_type type, const T &id, const std::pair<int, int> &state1, const std::pair<int, int> &state2);
+        expr_ref mk_nq_char(const std::pair<int, int> &id, nq_bridge_part part, int i);
+        expr_ref mk_nq_counter(const std::pair<int, int> &id, nq_bridge_part part, int i);
 
         struct FA FA_left, FA_right;
         bool atom_is_const_char(expr *const e, expr* &ch);
         bool can_be_a_valid_sync_loop(int i, int j);
         void from_word_term_to_FA(const expr_ref_vector &term, int p, struct FA &FA);
-        void from_nq_bridge_to_FA(const std::pair<int, int> &id, int mode, int p, struct FA &FA);
-        template <typename T> expr_ref_vector if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(int type, const T &id, int i, int j);
-        template <typename T> expr_ref_vector only_at_most_one_incoming_edge_of_one_state_can_be_selected(int type, const T &id, int i, int j);
-        template <typename T> expr_ref_vector only_at_most_one_outgoing_edge_of_one_state_can_be_selected(int type, const T &id, int i, int j);
-        template <typename T> expr_ref_vector selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(int type, const T &id, int i, int j);
-        template <typename T> expr_ref_vector at_least_one_incoming_edge_of_final_state_should_be_selected(int type, const T &id);
-        template <typename T> expr_ref_vector sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(int type, const T &id);
+        void from_nq_bridge_to_FA(const std::pair<int, int> &id, formula_type type, int p, struct FA &FA);
+        template <typename T> expr_ref_vector if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(formula_type type, const T &id, int i, int j);
+        template <typename T> expr_ref_vector only_at_most_one_incoming_edge_of_one_state_can_be_selected(formula_type type, const T &id, int i, int j);
+        template <typename T> expr_ref_vector only_at_most_one_outgoing_edge_of_one_state_can_be_selected(formula_type type, const T &id, int i, int j);
+        template <typename T> expr_ref_vector selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(formula_type type, const T &id, int i, int j);
+        template <typename T> expr_ref_vector at_least_one_incoming_edge_of_final_state_should_be_selected(formula_type type, const T &id);
+        template <typename T> expr_ref_vector sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(formula_type type, const T &id);
         expr_ref_vector length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const expr_ref_vector &term, int p);
         /***************************************************************************************************/
 
