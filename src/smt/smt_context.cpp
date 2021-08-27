@@ -44,6 +44,7 @@ Revision History:
 namespace smt {
 
     context::context(ast_manager & m, smt_params & p, params_ref const & _p):
+        m_is_underapproximation(false),
         m(m),
         m_fparams(p),
         m_params(_p),
@@ -3684,6 +3685,8 @@ namespace smt {
               get_guessed_literals(guessed_lits);
               tout << guessed_lits << "\n";);
         end_search();
+        if (status==l_false && m_is_underapproximation)
+            status = l_undef;
         return status;
     }
 
