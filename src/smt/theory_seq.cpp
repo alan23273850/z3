@@ -502,17 +502,22 @@ expr_ref theory_seq::mk_FA_self_loop_counter(expr *var, int i) {
     return result;
 }
 template <typename T>
-expr_ref theory_seq::mk_PFA_loop_counter(int type, const T &id, int i, int j) {
+expr_ref theory_seq::mk_PFA_loop_counter(formula_type type, const T &id, int i, int j) {
     expr_ref result = m_sk.mk_PFA_loop_counter(type, id, i, j);
     add_axiom(mk_literal(m_autil.mk_ge(result, m_autil.mk_int(0))));
     return result;
 }
-expr_ref theory_seq::mk_nq_char(const std::pair<int, int> &id, int part, int i) {
+template <typename T>
+expr_ref theory_seq::mk_PFA_edge_selection(formula_type type, const T &id, const std::pair<int, int> &state1, const std::pair<int, int> &state2) {
+    expr_ref result = m_sk.mk_PFA_edge_selection(type, id, state1, state2);
+    return result;
+}
+expr_ref theory_seq::mk_nq_char(const std::pair<int, int> &id, nq_bridge_part part, int i) {
     expr_ref result = m_sk.mk_nq_char(id, part, i);
     add_axiom(mk_literal(m_autil.mk_ge(result, m_autil.mk_int(0))));
     return result;
 }
-expr_ref theory_seq::mk_nq_counter(const std::pair<int, int> &id, int part, int i) {
+expr_ref theory_seq::mk_nq_counter(const std::pair<int, int> &id, nq_bridge_part part, int i) {
     expr_ref result = m_sk.mk_nq_counter(id, part, i);
     add_axiom(mk_literal(m_autil.mk_ge(result, m_autil.mk_int(0))));
     return result;
@@ -665,26 +670,26 @@ void theory_seq::from_word_term_to_FA(const expr_ref_vector &term, int p, struct
     }
 }
 
-void theory_seq::from_nq_bridge_to_FA(const std::pair<int, int> &id, int mode, int p, struct FA &FA) {
-    int index[][3] = {{PREFIX, DIFF_LHS, SUFFIX_LHS}, {PREFIX, DIFF_RHS, SUFFIX_RHS}};
+void theory_seq::from_nq_bridge_to_FA(const std::pair<int, int> &id, formula_type type, int p, struct FA &FA) {
     FA.clear();
-    if (mode == DISEQ_LHS) mode = 0;
-    else if (mode == DISEQ_RHS) mode = 1;
+    nq_bridge_part part0[] = {DIFF_LHS, SUFFIX_LHS}, part1[] = {DIFF_RHS, SUFFIX_RHS}, *part;
+    if (type == DISEQ_LHS) part = part0;
+    else if (type == DISEQ_RHS) part = part1;
     else SASSERT(false);
     for (int i=0; i<p; i++) {
-        FA.characters.push_back(mk_nq_char(id, index[mode][0], i));
-        FA.counters.push_back(mk_nq_counter(id, index[mode][0], i));
+        FA.characters.push_back(mk_nq_char(id, PREFIX, i));
+        FA.counters.push_back(mk_nq_counter(id, PREFIX, i));
     }
-    FA.characters.push_back(mk_nq_char(id, index[mode][1], 0));
-    FA.counters.push_back(mk_nq_counter(id, index[mode][1], 0));
+    FA.characters.push_back(mk_nq_char(id, part[0], 0));
+    FA.counters.push_back(mk_nq_counter(id, part[0], 0));
     for (int i=0; i<p; i++) {
-        FA.characters.push_back(mk_nq_char(id, index[mode][2], i));
-        FA.counters.push_back(mk_nq_counter(id, index[mode][2], i));
+        FA.characters.push_back(mk_nq_char(id, part[1], i));
+        FA.counters.push_back(mk_nq_counter(id, part[1], i));
     }
 }
 
 template <typename T>
-expr_ref_vector theory_seq::if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(int type, const T &id, int i, int j) {
+expr_ref_vector theory_seq::if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(formula_type type, const T &id, int i, int j) {
     expr_ref_vector expv(m);
     if (can_be_a_valid_sync_loop(i, j)) {
         expr_ref loop_i_j_gt_zero(m_autil.mk_ge(mk_PFA_loop_counter(type, id, i, j), m_autil.mk_int(1)), m);
@@ -698,13 +703,13 @@ expr_ref_vector theory_seq::if_a_loop_is_taken_the_two_characters_on_its_label_s
 }
 
 template <typename T>
-expr_ref_vector theory_seq::only_at_most_one_incoming_edge_of_one_state_can_be_selected(int type, const T &id, int i, int j) {
+expr_ref_vector theory_seq::only_at_most_one_incoming_edge_of_one_state_can_be_selected(formula_type type, const T &id, int i, int j) {
     expr_ref_vector expv(m);
     expr_ref_vector edges(m);
     expr_ref_vector literals_can_not_be_both_true(m);
-    if (i >= 1) edges.push_back(m_sk.mk_PFA_edge_selection(type, id, std::make_pair(i-1, j), std::make_pair(i, j)));
-    if (j >= 1) edges.push_back(m_sk.mk_PFA_edge_selection(type, id, std::make_pair(i, j-1), std::make_pair(i, j)));
-    if (i>=1 && j>=1) edges.push_back(m_sk.mk_PFA_edge_selection(type, id, std::make_pair(i-1, j-1), std::make_pair(i, j)));
+    if (i >= 1) edges.push_back(mk_PFA_edge_selection(type, id, std::make_pair(i-1, j), std::make_pair(i, j)));
+    if (j >= 1) edges.push_back(mk_PFA_edge_selection(type, id, std::make_pair(i, j-1), std::make_pair(i, j)));
+    if (i>=1 && j>=1) edges.push_back(mk_PFA_edge_selection(type, id, std::make_pair(i-1, j-1), std::make_pair(i, j)));
     if (edges.size() >= 2) {
         for (unsigned i=0; i<edges.size(); i++)
             for (unsigned j=i+1; j<edges.size(); j++)
@@ -718,13 +723,13 @@ expr_ref_vector theory_seq::only_at_most_one_incoming_edge_of_one_state_can_be_s
 }
 
 template <typename T>
-expr_ref_vector theory_seq::only_at_most_one_outgoing_edge_of_one_state_can_be_selected(int type, const T &id, int i, int j) {
+expr_ref_vector theory_seq::only_at_most_one_outgoing_edge_of_one_state_can_be_selected(formula_type type, const T &id, int i, int j) {
     expr_ref_vector expv(m);
     expr_ref_vector edges(m);
     expr_ref_vector literals_can_not_be_both_true(m);
-    if (i+1 < (int)FA_left.size()) edges.push_back(m_sk.mk_PFA_edge_selection(type, id, std::make_pair(i, j), std::make_pair(i+1, j)));
-    if (j+1 < (int)FA_right.size()) edges.push_back(m_sk.mk_PFA_edge_selection(type, id, std::make_pair(i, j), std::make_pair(i, j+1)));
-    if (i+1<(int)FA_left.size() && j+1<(int)FA_right.size()) edges.push_back(m_sk.mk_PFA_edge_selection(type, id, std::make_pair(i, j), std::make_pair(i+1, j+1)));
+    if (i+1 < (int)FA_left.size()) edges.push_back(mk_PFA_edge_selection(type, id, std::make_pair(i, j), std::make_pair(i+1, j)));
+    if (j+1 < (int)FA_right.size()) edges.push_back(mk_PFA_edge_selection(type, id, std::make_pair(i, j), std::make_pair(i, j+1)));
+    if (i+1<(int)FA_left.size() && j+1<(int)FA_right.size()) edges.push_back(mk_PFA_edge_selection(type, id, std::make_pair(i, j), std::make_pair(i+1, j+1)));
     if (edges.size() >= 2) {
         for (unsigned i=0; i<edges.size(); i++)
             for (unsigned j=i+1; j<edges.size(); j++)
@@ -738,19 +743,19 @@ expr_ref_vector theory_seq::only_at_most_one_outgoing_edge_of_one_state_can_be_s
 }
 
 template <typename T>
-expr_ref_vector theory_seq::selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(int type, const T &id, int i, int j) {
+expr_ref_vector theory_seq::selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(formula_type type, const T &id, int i, int j) {
     expr_ref_vector expv(m);
     expr_ref_vector self_loop_or_outgoing_edges(m);
     expr_ref_vector incoming_edges(m);
     if (can_be_a_valid_sync_loop(i, j))
         self_loop_or_outgoing_edges.push_back(m_autil.mk_ge(mk_PFA_loop_counter(type, id, i, j), m_autil.mk_int(1)));
-    if (i+1 < (int)FA_left.size()) self_loop_or_outgoing_edges.push_back(m_sk.mk_PFA_edge_selection(type, id, std::make_pair(i, j), std::make_pair(i+1, j)));
-    if (j+1 < (int)FA_right.size()) self_loop_or_outgoing_edges.push_back(m_sk.mk_PFA_edge_selection(type, id, std::make_pair(i, j), std::make_pair(i, j+1)));
-    if (i+1<(int)FA_left.size() && j+1<(int)FA_right.size()) self_loop_or_outgoing_edges.push_back(m_sk.mk_PFA_edge_selection(type, id, std::make_pair(i, j), std::make_pair(i+1, j+1)));
+    if (i+1 < (int)FA_left.size()) self_loop_or_outgoing_edges.push_back(mk_PFA_edge_selection(type, id, std::make_pair(i, j), std::make_pair(i+1, j)));
+    if (j+1 < (int)FA_right.size()) self_loop_or_outgoing_edges.push_back(mk_PFA_edge_selection(type, id, std::make_pair(i, j), std::make_pair(i, j+1)));
+    if (i+1<(int)FA_left.size() && j+1<(int)FA_right.size()) self_loop_or_outgoing_edges.push_back(mk_PFA_edge_selection(type, id, std::make_pair(i, j), std::make_pair(i+1, j+1)));
 
-    if (i >= 1) incoming_edges.push_back(m_sk.mk_PFA_edge_selection(type, id, std::make_pair(i-1, j), std::make_pair(i, j)));
-    if (j >= 1) incoming_edges.push_back(m_sk.mk_PFA_edge_selection(type, id, std::make_pair(i, j-1), std::make_pair(i, j)));
-    if (i>=1 && j>=1) incoming_edges.push_back(m_sk.mk_PFA_edge_selection(type, id, std::make_pair(i-1, j-1), std::make_pair(i, j)));
+    if (i >= 1) incoming_edges.push_back(mk_PFA_edge_selection(type, id, std::make_pair(i-1, j), std::make_pair(i, j)));
+    if (j >= 1) incoming_edges.push_back(mk_PFA_edge_selection(type, id, std::make_pair(i, j-1), std::make_pair(i, j)));
+    if (i>=1 && j>=1) incoming_edges.push_back(mk_PFA_edge_selection(type, id, std::make_pair(i-1, j-1), std::make_pair(i, j)));
 
     if (self_loop_or_outgoing_edges.size()>0 && incoming_edges.size()>0) {
         // add_axiom(~mk_literal(m.mk_or(self_loop_or_outgoing_edges)), mk_literal(m.mk_or(incoming_edges)));
@@ -762,13 +767,13 @@ expr_ref_vector theory_seq::selection_of_self_edge_or_outgoing_edges_implies_sel
 }
 
 template <typename T>
-expr_ref_vector theory_seq::at_least_one_incoming_edge_of_final_state_should_be_selected(int type, const T &id) {
+expr_ref_vector theory_seq::at_least_one_incoming_edge_of_final_state_should_be_selected(formula_type type, const T &id) {
     SASSERT(FA_left.size()>=1 && FA_right.size()>=1);
     expr_ref_vector expv(m);
     expr_ref_vector incoming_edges(m);
-    if (FA_left.size() >= 2) incoming_edges.push_back(m_sk.mk_PFA_edge_selection(type, id, std::make_pair(FA_left.size()-2, FA_right.size()-1), std::make_pair(FA_left.size()-1, FA_right.size()-1)));
-    if (FA_right.size() >= 2) incoming_edges.push_back(m_sk.mk_PFA_edge_selection(type, id, std::make_pair(FA_left.size()-1, FA_right.size()-2), std::make_pair(FA_left.size()-1, FA_right.size()-1)));
-    if (FA_left.size()>=2 && FA_right.size()>=2) incoming_edges.push_back(m_sk.mk_PFA_edge_selection(type, id, std::make_pair(FA_left.size()-2, FA_right.size()-2), std::make_pair(FA_left.size()-1, FA_right.size()-1)));
+    if (FA_left.size() >= 2) incoming_edges.push_back(mk_PFA_edge_selection(type, id, std::make_pair(FA_left.size()-2, FA_right.size()-1), std::make_pair(FA_left.size()-1, FA_right.size()-1)));
+    if (FA_right.size() >= 2) incoming_edges.push_back(mk_PFA_edge_selection(type, id, std::make_pair(FA_left.size()-1, FA_right.size()-2), std::make_pair(FA_left.size()-1, FA_right.size()-1)));
+    if (FA_left.size()>=2 && FA_right.size()>=2) incoming_edges.push_back(mk_PFA_edge_selection(type, id, std::make_pair(FA_left.size()-2, FA_right.size()-2), std::make_pair(FA_left.size()-1, FA_right.size()-1)));
 
     if (incoming_edges.size()>0) {
         // add_axiom(mk_literal(m.mk_or(incoming_edges)));
@@ -780,7 +785,7 @@ expr_ref_vector theory_seq::at_least_one_incoming_edge_of_final_state_should_be_
 }
 
 template <typename T>
-expr_ref_vector theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(int type, const T &id) {
+expr_ref_vector theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(formula_type type, const T &id) {
     DEBUG("fc_verbose","sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA:\n";);
     expr_ref_vector expv(m);
     for (unsigned i=0; i<FA_left.size(); i++) {
