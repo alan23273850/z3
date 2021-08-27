@@ -397,7 +397,6 @@ namespace smt {
         bool                           m_has_seq;
         bool                           m_new_solution;     // new solution added
         bool                           m_new_propagation;  // new propagation to core
-        bool                           m_is_underapproximation;
 
         obj_hashtable<expr>            m_fixed;            // string variables that are fixed length.
         obj_hashtable<expr>            m_is_digit;         // expressions that have been constrained to be digits
@@ -523,6 +522,10 @@ namespace smt {
         template <typename T> expr_ref_vector sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(formula_type type, const T &id);
         expr_ref_vector length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const expr_ref_vector &term, int p);
         /***************************************************************************************************/
+
+        void dump_formula();
+        void dump_flattening(int segment, const expr_ref_vector &add_axiom);
+        std::vector<int> get_segment_vector();
 
         // final check 
         expr_ref_vector handle_disequalities(int size);

@@ -347,7 +347,6 @@ theory_seq::theory_seq(context& ctx):
     m_has_seq(m_util.has_seq()),
     m_new_solution(false),
     m_new_propagation(false),
-    m_is_underapproximation(false),
     FA_left(m),
     FA_right(m) {
 }
@@ -529,7 +528,7 @@ expr_ref_vector theory_seq::handle_disequalities(int size) {
     // bool change = false;
     expr_ref_vector add_axiom(m);
     for (unsigned i=0; i<m_nqs.size(); i++) {
-        m_is_underapproximation = true;
+        get_context().set_underapproximation_flag_to_true();
         ne &nq = m_nqs.ref(i); // display_disequation(std::cout, nq);
         const auto id_pair = std::make_pair(nq.l().get()->get_id(), nq.r().get()->get_id());
         // const auto id_pair = std::make_pair(std::min(nq.l().get()->get_id(), nq.r().get()->get_id()), std::max(nq.l().get()->get_id(), nq.r().get()->get_id()));
@@ -838,7 +837,7 @@ expr_ref_vector theory_seq::flatten_equalities(int size) {
     for (auto const& eq: m_rep) {
         if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
             eq.e && eq.e->get_sort()==m_util.mk_string_sort()) { // std::cout << mk_pp(eq.v, m) << " = " << mk_pp(eq.e, m) << "\n";
-            m_is_underapproximation = true;
+            get_context().set_underapproximation_flag_to_true();
             const auto id_pair = std::make_pair(eq.v->get_id(), eq.e->get_id());
             // const auto id_pair = std::make_pair(std::min(eq.v->get_id(), eq.e->get_id()), std::max(eq.v->get_id(), eq.e->get_id()));
             // if (!m_repids.contains(id_pair)) {
@@ -882,7 +881,7 @@ expr_ref_vector theory_seq::flatten_equalities(int size) {
         }
     }
     for (const auto &eq: m_eqs) { // display_equation(std::cout, eq);
-        m_is_underapproximation = true;
+        get_context().set_underapproximation_flag_to_true();
         // if(!m_flattened_eqids.contains(eq.id())) {
         //     m_flattened_eqids.push_back(eq.id());
 
@@ -1119,6 +1118,87 @@ std::string header() {
     return ss.str();
 }
 
+void theory_seq::dump_formula() {
+    std::ofstream of;
+    of.open("formula.smt2");
+    of << header();
+    for (auto const& eq: m_rep) {
+        if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
+            eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
+            of << "(assert (= ";
+            expr_ref_vector erv(m);
+            m_util.str.get_concat_units(eq.v, erv);
+            if (erv.size() > 1) of << "(str.++ ";
+            for (expr* a : erv) { of << mk_pp(a, m); }
+            if (erv.size() > 1) of << ")";
+            of << " ";
+            erv.reset();
+            m_util.str.get_concat_units(eq.e, erv);
+            if (erv.size() > 1) of << "(str.++ ";
+            for (expr* a : erv) { of << mk_pp(a, m); }
+            if (erv.size() > 1) of << ")";
+            of << "))\n";
+        }
+    }
+    for (const auto e: m_eqs) {
+        of << "(assert (= ";
+        if (e.ls.size() > 1) of << "(str.++ ";
+        for (expr* a : e.ls) { of << mk_pp(a, m); }
+        if (e.ls.size() > 1) of << ")";
+        of << " ";
+        if (e.rs.size() > 1) of << "(str.++ ";
+        for (expr* a : e.rs) { of << mk_pp(a, m); }
+        if (e.rs.size() > 1) of << ")";
+        of << "))\n";
+    }
+    for (const auto e: m_nqs) {
+        of << "(assert (not (= ";
+        expr_ref_vector erv(m);
+        m_util.str.get_concat_units(e.l(), erv);
+        if (erv.size() > 1) of << "(str.++ ";
+        for (expr* a : erv) { of << mk_pp(a, m); }
+        if (erv.size() > 1) of << ")";
+        of << " ";
+        erv.reset();
+        m_util.str.get_concat_units(e.r(), erv);
+        if (erv.size() > 1) of << "(str.++ ";
+        for (expr* a : erv) { of << mk_pp(a, m); }
+        if (erv.size() > 1) of << ")";
+        of << ")))\n";
+    }
+    of << "\n(check-sat)\n";
+    of.close();
+}
+
+void theory_seq::dump_flattening(int segment, const expr_ref_vector &add_axiom) {
+    std::ofstream of;
+    of.open("flattening_" + std::to_string(segment) + ".smt2");
+    of << header();
+    
+    expr_ref_vector Assigns(m);
+    get_context().get_assignments(Assigns);
+    for (const auto &e : Assigns) {
+        if (ctx.is_relevant(e)) {
+            of << "(assert " << mk_pp(e, m) << ")" << std::endl;
+        }
+    }
+    for (const auto &e : add_axiom) {
+        of << "(assert " << mk_pp(e, m) << ")" << std::endl;
+    }
+    of << "\n(check-sat)\n";
+    of.close();
+}
+
+std::vector<int> theory_seq::get_segment_vector() {
+    std::vector<int> segment_vector;
+    int segment = stoi(gparams::get_value("segment"));
+    if (segment <= 0)
+        segment_vector.insert(segment_vector.end(), {1, 2, 4, 8});
+    else
+        segment_vector.push_back(segment);
+    return segment_vector;
+}
+
 final_check_status theory_seq::final_check_eh() {
     DEBUG("fc","level: " << ctx.get_scope_level() << "\n";)
 
@@ -1139,100 +1219,28 @@ final_check_status theory_seq::final_check_eh() {
     // for (int i=0; i<m_eqs.size(); i++) display_equation(std::cout, m_eqs[i]), std::cout << "===========\n";
     // for (int i=0; i<m_nqs.size(); i++) display_disequation(std::cout, m_nqs[i]), std::cout << "===========\n";
     // for (int i=0; i<m_ncs.size(); i++) display_nc(std::cout, m_ncs[i]), std::cout << "===========\n";
-    if (is_debug_enabled("dump_formula")) {
-        std::ofstream of;
-        of.open("formula.smt2");
-        of << header();
-        for (auto const& eq: m_rep) {
-            if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
-                eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
-                of << "(assert (= ";
-                expr_ref_vector erv(m);
-                m_util.str.get_concat_units(eq.v, erv);
-                if (erv.size() > 1) of << "(str.++ ";
-                for (expr* a : erv) { of << mk_pp(a, m); }
-                if (erv.size() > 1) of << ")";
-                of << " ";
-                erv.reset();
-                m_util.str.get_concat_units(eq.e, erv);
-                if (erv.size() > 1) of << "(str.++ ";
-                for (expr* a : erv) { of << mk_pp(a, m); }
-                if (erv.size() > 1) of << ")";
-                of << "))\n";
-            }
-        }
-        for (const auto e: m_eqs) {
-            of << "(assert (= ";
-            if (e.ls.size() > 1) of << "(str.++ ";
-            for (expr* a : e.ls) { of << mk_pp(a, m); }
-            if (e.ls.size() > 1) of << ")";
-            of << " ";
-            if (e.rs.size() > 1) of << "(str.++ ";
-            for (expr* a : e.rs) { of << mk_pp(a, m); }
-            if (e.rs.size() > 1) of << ")";
-            of << "))\n";
-        }
-        for (const auto e: m_nqs) {
-            of << "(assert (not (= ";
-            expr_ref_vector erv(m);
-            m_util.str.get_concat_units(e.l(), erv);
-            if (erv.size() > 1) of << "(str.++ ";
-            for (expr* a : erv) { of << mk_pp(a, m); }
-            if (erv.size() > 1) of << ")";
-            of << " ";
-            erv.reset();
-            m_util.str.get_concat_units(e.r(), erv);
-            if (erv.size() > 1) of << "(str.++ ";
-            for (expr* a : erv) { of << mk_pp(a, m); }
-            if (erv.size() > 1) of << ")";
-            of << ")))\n";
-        }
-        of << "\n(check-sat)\n";
-        of.close();
-    }
+    if (is_debug_enabled("dump_formula"))
+        dump_formula();
 
     if (is_debug_enabled("assignment")) ctx.display_assignment(std::cout);
 
-    std::vector<int> segment_vector;
-    int segment_size = stoi(gparams::get_value("segment"));
-    if (segment_size <= 0) {
-        segment_vector.insert(segment_vector.end(), {1, 2, 4, 8});
-    } else {
-        segment_vector.push_back(segment_size);
-    }
-    for (int segment_size : segment_vector) {
+    std::vector<int> segment_vector = get_segment_vector();
+    for (int segment : segment_vector) {
         expr_ref_vector add_axiom(m);
-        add_axiom.append(flatten_equalities(segment_size));
-        add_axiom.append(handle_disequalities(segment_size));
+        add_axiom.append(flatten_equalities(segment));
+        add_axiom.append(handle_disequalities(segment));
         int_expr_solver ies(m, get_fparams());
         ies.initialize(ctx);
         lbool result = ies.check_sat(add_axiom);
-        // std::cout << result << "\n";
 
-        if (is_debug_enabled("dump_flattening")) {
-            std::ofstream of;
-            of.open("flattening_" + std::to_string(segment_size) + ".smt2");
-            of << header();
-            
-            expr_ref_vector Assigns(m);
-            get_context().get_assignments(Assigns);
-            for (const auto &e : Assigns) {
-                if (ctx.is_relevant(e)) {
-                    of << "(assert " << mk_pp(e, m) << ")" << std::endl;
-                }
-            }
-            for (const auto &e : add_axiom) {
-                of << "(assert " << mk_pp(e, m) << ")" << std::endl;
-            }
-            of << "\n(check-sat)\n";
-            of.close();
-        }
+        if (is_debug_enabled("dump_flattening"))
+            dump_flattening(segment, add_axiom);
 
         if (result == l_true) {
             return FC_DONE;
         }
         else if (result == l_false) {
-            if (segment_size < 8) continue;
+            if (segment < 8) continue;
             // std::cout << "UNSAT core:\n";
             // for (unsigned i=0; i<ies.m_kernel.get_unsat_core_size(); i++) {
             //     std::cout << mk_pp(ies.m_kernel.get_unsat_core_expr(i), m) << std::endl;
@@ -1261,7 +1269,7 @@ final_check_status theory_seq::final_check_eh() {
     //                     if ((ch = atom_is_const_char_unicode(atom)) < 0) {
     //                         rational _counter, _unicode;
     //                         DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
-    //                         for (int i=0; i<segment_size; i++) {
+    //                         for (int i=0; i<segment; i++) {
     //                             if (!get_num_value(mk_FA_self_loop_counter(atom, i), _counter))
     //                                 SASSERT(false);
     //                             if (!get_num_value(mk_FA_self_loop_char(atom, i), _unicode))
@@ -1291,7 +1299,7 @@ final_check_status theory_seq::final_check_eh() {
     //                 if ((ch = atom_is_const_char_unicode(atom)) < 0) {
     //                     rational _counter, _unicode;
     //                     DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
-    //                     for (int i=0; i<segment_size; i++) {
+    //                     for (int i=0; i<segment; i++) {
     //                         if (!get_num_value(mk_FA_self_loop_counter(atom, i), _counter))
     //                             SASSERT(false);
     //                         if (!get_num_value(mk_FA_self_loop_char(atom, i), _unicode))
@@ -1322,7 +1330,7 @@ final_check_status theory_seq::final_check_eh() {
     //                 if ((ch = atom_is_const_char_unicode(atom)) < 0) {
     //                     rational _counter, _unicode;
     //                     DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
-    //                     for (int i=0; i<segment_size; i++) {
+    //                     for (int i=0; i<segment; i++) {
     //                         if (!get_num_value(mk_FA_self_loop_counter(atom, i), _counter))
     //                             SASSERT(false);
     //                         if (!get_num_value(mk_FA_self_loop_char(atom, i), _unicode))
@@ -1344,7 +1352,7 @@ final_check_status theory_seq::final_check_eh() {
     //             //         DISPLAYMODEL("(" << _unicode << ")";);
     //             //     }
     //             //     else
-    //             //         for (int p=0; p<segment_size; p++) {
+    //             //         for (int p=0; p<segment; p++) {
     //             //             if (!get_num_value(mk_nq_counter(id_pair, index[mode][part], p), _counter))
     //             //                 SASSERT(false);
     //             //             if (!get_num_value(mk_nq_char(id_pair, index[mode][part], p), _unicode))
@@ -1366,7 +1374,7 @@ final_check_status theory_seq::final_check_eh() {
     //         //         if (atom_is_const_char_unicode(atom) < 0) {
     //         //             rational _counter, _unicode;
     //         //             DISPLAYMODEL("[" << mk_pp(atom, m) << "] ==> ";);
-    //         //             for (int i=0; i<segment_size; i++) {
+    //         //             for (int i=0; i<segment; i++) {
     //         //                 get_num_value(mk_FA_self_loop_counter(atom, i), _counter);
     //         //                 get_num_value(mk_FA_self_loop_char(atom, i), _unicode);
     //         //                 for (int j=0; j<_counter; j++) {
