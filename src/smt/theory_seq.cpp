@@ -97,6 +97,7 @@ Outline:
 --*/
 
 #include <typeinfo>
+#include <vector>
 #include "ast/ast_pp.h"
 #include "ast/ast_ll_pp.h"
 #include "ast/ast_trail.h"
@@ -422,32 +423,32 @@ void theory_seq::block_curr_assignment() {
 void theory_seq::print_terms(const expr_ref_vector& terms){
     bool first =true;
     for(auto const& term :terms) {
-        if(first) first = false; else DEBUG("fc",".";);
-        DEBUG("fc",mk_pp(term,m););
+        if(first) first = false; else DEBUG("input",".";);
+        DEBUG("input",mk_pp(term,m););
     }
 }
 
 
 void theory_seq::print_formulas(zstring msg){
-    DEBUG("fc",msg <<" \n";);
+    DEBUG("input",msg <<" \n";);
 
     if(!m_eqs.empty() || !m_rep.empty()) DEBUG("fc","Word Equations:\n";);
     for (auto const& eq:m_eqs) {
         print_terms(eq.ls);
-        DEBUG("fc"," = ";);
+        DEBUG("input"," = ";);
         print_terms(eq.rs);
-        DEBUG("fc","\n";);
+        DEBUG("input","\n";);
     }
     for (auto const& eq:m_rep) {
         if(eq.v && eq.v->get_sort()==m_util.mk_string_sort()) {
             expr_ref_vector terms(m);
             m_util.str.get_concat_units(eq.e, terms);
             print_terms(terms);
-            DEBUG("fc"," = ";);
+            DEBUG("input"," = ";);
             terms.reset();
             m_util.str.get_concat_units(eq.v, terms);
             print_terms(terms);
-            DEBUG("fc","\n";);
+            DEBUG("input","\n";);
         }
     }
 
@@ -456,11 +457,11 @@ void theory_seq::print_formulas(zstring msg){
         expr_ref_vector terms(m);
         m_util.str.get_concat_units(dis.l(), terms);
         print_terms(terms);
-        DEBUG("fc"," != ";);
+        DEBUG("input"," != ";);
         terms.reset();
         m_util.str.get_concat_units(dis.r(), terms);
         print_terms(terms);
-        DEBUG("fc","\n";);
+        DEBUG("input","\n";);
     }
 //    for(auto const& dis:m_exclude){
 //        expr_ref_vector terms(m);
@@ -475,15 +476,15 @@ void theory_seq::print_formulas(zstring msg){
 
     if(!m_ncs.empty()) DEBUG("fc","Not Contains:\n";);
     for (auto const & nc:m_ncs){
-        DEBUG("fc","not " << mk_bounded_pp(nc.contains(), m, 2)<<"\n";);
+        DEBUG("input","not " << mk_bounded_pp(nc.contains(), m, 2)<<"\n";);
     }
 
     if(!m_rcs.empty()) DEBUG("fc","Regular Constraints:\n";);
     for (auto const & rc:m_rcs){
-        DEBUG("fc",rc.term() << " in " <<rc.re() <<"\n";);
+        DEBUG("input",rc.term() << " in " <<rc.re() <<"\n";);
     }
 
-    DEBUG("fc","\n";);
+    DEBUG("input","\n";);
 }
 
 expr_ref theory_seq::mk_parikh_image_counter(expr *var, int ch) {
@@ -1131,6 +1132,8 @@ final_check_status theory_seq::final_check_eh() {
     m_new_propagation = false;
     TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
     TRACE("seq_verbose", ctx.display(tout););
+
+    print_formulas("Entering final check:");
 
     // std::cout << m_eqs.size() << " " << m_nqs.size() << " " << m_ncs.size() << " " << m_rcs.size() << "\n";
     // for (int i=0; i<m_eqs.size(); i++) display_equation(std::cout, m_eqs[i]), std::cout << "===========\n";
