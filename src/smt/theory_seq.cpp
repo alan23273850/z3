@@ -431,7 +431,7 @@ void theory_seq::print_terms(const expr_ref_vector& terms){
 void theory_seq::print_formulas(zstring msg){
     DEBUG("input",msg <<" \n";);
 
-    if(!m_eqs.empty() || !m_rep.empty()) DEBUG("fc","Word Equations:\n";);
+    if(!m_eqs.empty() || !m_rep.empty()) DEBUG("input","Word Equations:\n";);
     for (auto const& eq:m_eqs) {
         print_terms(eq.ls);
         DEBUG("input"," = ";);
@@ -451,7 +451,7 @@ void theory_seq::print_formulas(zstring msg){
         }
     }
 
-    if(!m_nqs.empty()) DEBUG("fc","Word Disequalities:\n";);
+    if(!m_nqs.empty()) DEBUG("input","Word Disequalities:\n";);
     for (auto const& dis:m_nqs) {
         expr_ref_vector terms(m);
         m_util.str.get_concat_units(dis.l(), terms);
@@ -473,12 +473,12 @@ void theory_seq::print_formulas(zstring msg){
 //        DEBUG("fc","\n";);
 //    }
 
-    if(!m_ncs.empty()) DEBUG("fc","Not Contains:\n";);
+    if(!m_ncs.empty()) DEBUG("input","Not Contains:\n";);
     for (auto const & nc:m_ncs){
         DEBUG("input","not " << mk_bounded_pp(nc.contains(), m, 2)<<"\n";);
     }
 
-    if(!m_rcs.empty()) DEBUG("fc","Regular Constraints:\n";);
+    if(!m_rcs.empty()) DEBUG("input","Regular Constraints:\n";);
     for (auto const & rc:m_rcs){
         DEBUG("input",rc.term() << " in " <<rc.re() <<"\n";);
     }
