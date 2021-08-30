@@ -1210,6 +1210,12 @@ final_check_status theory_seq::final_check_eh() {
     if (m_ncs.size()>0 || m_rcs.size()>0)
         return FC_GIVEUP;
 
+    if (m_unhandled_expr) {
+        TRACEFIN("give_up");
+        TRACE("seq", tout << "unhandled: " << mk_pp(m_unhandled_expr, m) << "\n";);
+        return FC_GIVEUP;
+    }
+
     m_new_propagation = false;
     TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
     TRACE("seq_verbose", ctx.display(tout););
@@ -1483,11 +1489,6 @@ final_check_status theory_seq::final_check_eh() {
 //         return FC_CONTINUE;
 //     }
 
-    if (m_unhandled_expr) {
-        TRACEFIN("give_up");
-        TRACE("seq", tout << "unhandled: " << mk_pp(m_unhandled_expr, m) << "\n";);
-        return FC_GIVEUP;
-    }
     if (is_solved()) {
         //scoped_enable_trace _se;
         TRACEFIN("is_solved");
@@ -4300,7 +4301,9 @@ void theory_seq::relevant_eh(app* n) {
 
     if (m_util.str.is_replace_all(n) ||
         m_util.str.is_replace_re(n) ||
-        m_util.str.is_replace_re_all(n)
+        m_util.str.is_replace_re_all(n) ||
+        m_util.str.is_itos(n) ||
+        m_util.str.is_stoi(n)
         ) {
         add_unhandled_expr(n);
     }
