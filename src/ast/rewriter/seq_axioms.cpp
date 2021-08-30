@@ -601,26 +601,26 @@ namespace seq {
         expr_ref len_e = mk_len(e);
 
         rational iv;
-//        if (a.is_numeral(i, iv) && iv.is_unsigned()) {
-//            expr_ref_vector es(m);
-//            expr_ref nth(m);
-//            unsigned k = iv.get_unsigned();
-//            for (unsigned j = 0; j <= k; ++j) {
-//                es.push_back(seq.str.mk_unit(mk_nth(s, j)));
-//            }
-//            nth = es.back();
-//            es.push_back(m_sk.mk_tail(s, i));
-//            add_clause(~i_ge_0, i_ge_len_s, mk_seq_eq(s, seq.str.mk_concat(es, e->get_sort())));
-//            add_clause(~i_ge_0, i_ge_len_s, mk_seq_eq(nth, e));
-//        }
-//        else {
+        if (a.is_numeral(i, iv) && iv.is_unsigned()) {
+            expr_ref_vector es(m);
+            expr_ref nth(m);
+            unsigned k = iv.get_unsigned();
+            for (unsigned j = 0; j < k; ++j) {
+                es.push_back(seq.str.mk_unit(mk_nth(s, j)));
+            }
+            es.push_back(e);
+            es.push_back(m_sk.mk_tail(s, i));
+            add_clause(~i_ge_0, i_ge_len_s, mk_seq_eq(s, seq.str.mk_concat(es, e->get_sort())));
+           // add_clause(~i_ge_0, i_ge_len_s, mk_seq_eq(nth, e));
+        }
+        else {
             expr_ref x =     m_sk.mk_pre(s, i);
             expr_ref y =     m_sk.mk_tail(s, i);
             expr_ref xey   = mk_concat(x, e, y);
             expr_ref len_x = mk_len(x);
             add_clause(~i_ge_0, i_ge_len_s, mk_seq_eq(s, xey));
             add_clause(~i_ge_0, i_ge_len_s, mk_eq(i, len_x));
-//        }
+        }
 
         add_clause(i_ge_0, mk_eq(e, emp));
         add_clause(~i_ge_len_s, mk_eq(e, emp));
