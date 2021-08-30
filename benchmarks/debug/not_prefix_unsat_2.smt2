@@ -1,0 +1,7 @@
+(set-logic QF_S)
+(declare-fun x () String)
+(declare-fun y () String)
+(declare-fun z () Int)
+(assert (= "A" (str.at x 0)))
+(assert (not (str.prefixof "A" x)))
+(check-sat)
