@@ -428,8 +428,24 @@ void theory_seq::print_terms(const expr_ref_vector& terms){
     }
 }
 
+void theory_seq::print_eq_from_enode(const expr_ref_vector& terms){
+    for(auto const& term :terms) {
+        if(ensure_enode(term)->get_root()!=ensure_enode(term)) {
+            expr_ref_vector terms(m);
+            m_util.str.get_concat_units(ensure_enode(term)->get_root()->get_expr(), terms);
+            print_terms(terms);
+            DEBUG("input"," = ";);
+            terms.reset();
+            m_util.str.get_concat_units(term, terms);
+            print_terms(terms);
+            DEBUG("input","\n";);
+        }
+    }
+}
+
 
 void theory_seq::print_formulas(zstring msg){
+
     DEBUG("input",msg <<" \n";);
 
     if(!m_eqs.empty() || !m_rep.empty()) DEBUG("input","Word Equations:\n";);
@@ -438,6 +454,10 @@ void theory_seq::print_formulas(zstring msg){
         DEBUG("input"," = ";);
         print_terms(eq.rs);
         DEBUG("input","\n";);
+
+        print_eq_from_enode(eq.ls);
+        print_eq_from_enode(eq.rs);
+
     }
     for (auto const& eq:m_rep) {
         if(eq.v && eq.v->get_sort()==m_util.mk_string_sort()) {
@@ -449,8 +469,18 @@ void theory_seq::print_formulas(zstring msg){
             m_util.str.get_concat_units(eq.v, terms);
             print_terms(terms);
             DEBUG("input","\n";);
+
+            terms.reset();
+            m_util.str.get_concat_units(eq.e, terms);
+            print_eq_from_enode(terms);
+            terms.reset();
+            m_util.str.get_concat_units(eq.v, terms);
+            print_eq_from_enode(terms);
         }
     }
+
+
+
 
     if(!m_nqs.empty()) DEBUG("input","Word Disequalities:\n";);
     for (auto const& dis:m_nqs) {
@@ -4159,6 +4189,7 @@ void theory_seq::new_eq_eh(theory_var v1, theory_var v2) {
 void theory_seq::new_eq_eh(dependency* deps, enode* n1, enode* n2) {
     expr* e1 = n1->get_expr();
     expr* e2 = n2->get_expr();
+
     TRACE("seq", tout << mk_bounded_pp(e1, m) << " = " << mk_bounded_pp(e2, m) << "\n";);
     if (n1 != n2 && m_util.is_seq(e1)) {
         theory_var v1 = n1->get_th_var(get_id());
@@ -4172,6 +4203,7 @@ void theory_seq::new_eq_eh(dependency* deps, enode* n1, enode* n2) {
         expr_ref o1(e1, m);
         expr_ref o2(e2, m);
         TRACE("seq", tout << mk_bounded_pp(o1, m) << " = " << mk_bounded_pp(o2, m) << "\n";);
+
         m_eqs.push_back(mk_eqdep(o1, o2, deps));
         solve_eqs(m_eqs.size()-1);
         enforce_length_coherence(n1, n2);
@@ -4214,7 +4246,7 @@ void theory_seq::new_diseq_eh(theory_var v1, theory_var v2) {
 }
 
 void theory_seq::push_scope_eh() {
-    DEBUG("fc","push_scope: "<<ctx.get_scope_level()<<"\n";);
+    DEBUG("scope","push_scope: "<<ctx.get_scope_level()<<"\n";);
     theory::push_scope_eh();
     m_rep.push_scope();
     m_repids.push_scope();
@@ -4235,7 +4267,7 @@ void theory_seq::push_scope_eh() {
 }
 
 void theory_seq::pop_scope_eh(unsigned num_scopes) {
-    DEBUG("fc","pop_scope: "<<ctx.get_scope_level()<<" with "<<num_scopes<<" levels\n";);
+    DEBUG("scope","pop_scope: "<<ctx.get_scope_level()<<" with "<<num_scopes<<" levels\n";);
     m_trail_stack.pop_scope(num_scopes);
     theory::pop_scope_eh(num_scopes);
     m_dm.pop_scope(num_scopes);

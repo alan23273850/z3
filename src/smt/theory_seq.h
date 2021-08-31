@@ -535,6 +535,8 @@ namespace smt {
         expr_ref_vector flatten_equalities(int size);
         void block_curr_assignment();
         void print_terms(const expr_ref_vector& terms);
+        void print_eq_from_enode(const expr_ref_vector& terms);
+
         void print_formulas(zstring msg);
         void print_term(const expr_ref_vector &term, int size);
         void print_FA_parameters(const expr_ref_vector &term, int size);
