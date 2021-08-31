@@ -535,9 +535,9 @@ namespace smt {
         void print_eq_from_enode(const expr_ref_vector& terms);
 
         void print_formulas(zstring msg);
-        void print_term(const expr_ref_vector &term, int size);
-        void print_FA_parameters(const expr_ref_vector &term, int size);
-        void print_model(int size);
+        void print_term(const arith_value &local_arith_value, const expr_ref_vector &term, int size);
+        void print_FA_parameters(const arith_value &local_arith_value, const expr_ref_vector &term, int size);
+        void print_model(context &local_ctx, int size);
         bool check_parikh_image();       // propagate check_parikh_image equalities
         bool simplify_and_solve_eqs();   // solve unitary equalities
         bool reduce_length_eq();
@@ -702,6 +702,7 @@ namespace smt {
 
         // arithmetic integration
         bool get_num_value(expr* s, rational& val) const;
+        bool get_num_value(const arith_value &local_arith_value, expr* s, rational& val) const;
         bool lower_bound(expr* s, rational& lo) const;
         bool lower_bound2(expr* s, rational& lo);
         bool upper_bound(expr* s, rational& hi) const;
