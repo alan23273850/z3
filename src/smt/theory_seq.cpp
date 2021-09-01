@@ -883,19 +883,18 @@ bool theory_seq::flatten_string_constraints() {
             return true;
         }
         else if (result == l_false) {
-            if (segment < 8) continue;
+            continue;
             // std::cout << "UNSAT core:\n";
             // for (unsigned i=0; i<ies.m_kernel.get_unsat_core_size(); i++) {
             //     std::cout << mk_pp(ies.m_kernel.get_unsat_core_expr(i), m) << std::endl;
             // }
-            block_curr_assignment();
-            return false;
         }
         else {
             SASSERT(false);
         }
     }
-    return true;
+    block_curr_assignment();
+    return false;
 }
 expr_ref_vector theory_seq::flatten_equalities(int size) {
     DEBUG("fc","Enter flatten_equalities\n";);
@@ -907,9 +906,9 @@ expr_ref_vector theory_seq::flatten_equalities(int size) {
             std::vector<std::tuple<formula_type, std::pair<int, int>, expr_ref_vector, expr_ref_vector>> eqs;
 
             expr_ref_vector lhs(m);
-            m_util.str.get_concat(eq.v, lhs);
+            m_util.str.get_concat_units(eq.v, lhs);
             expr_ref_vector rhs(m);
-            m_util.str.get_concat(eq.e, rhs);
+            m_util.str.get_concat_units(eq.e, rhs);
             eqs.push_back(std::make_tuple(REP, std::make_pair(eq.v->get_id(), eq.e->get_id()), lhs, rhs));
             for (const auto &terms: {lhs, rhs}) {
                 for (const auto &term: terms) {
