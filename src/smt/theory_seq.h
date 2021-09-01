@@ -442,6 +442,7 @@ namespace smt {
         enum formula_type {
             EQ,
             REP,
+            ENODE,
             DISEQ_LHS,
             DISEQ_RHS
         };
