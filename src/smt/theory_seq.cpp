@@ -557,8 +557,8 @@ expr_ref theory_seq::mk_nq_counter(const std::pair<int, int> &id, nq_bridge_part
     return result;
 }
 
-expr_ref_vector theory_seq::handle_disequalities(int size) {
-    DEBUG("fc","Enter handle_disequalities\n";);
+expr_ref_vector theory_seq::flatten_disequalities(int size) {
+    DEBUG("fc","Enter flatten_disequalities\n";);
     // bool change = false;
     expr_ref_vector add_axiom(m);
     for (unsigned i=0; i<m_nqs.size(); i++) {
@@ -864,7 +864,38 @@ expr_ref_vector theory_seq::length_of_string_variable_equals_sum_of_loop_length_
     }
     return expv;
 }
+bool theory_seq::flatten_string_constraints() {
+    std::vector<int> segment_vector = get_segment_vector();
+    for (int segment : segment_vector) {
+        expr_ref_vector add_axiom(m);
+        add_axiom.append(flatten_equalities(segment));
+        add_axiom.append(flatten_disequalities(segment));
+        int_expr_solver ies(m, get_fparams());
+        ies.initialize(ctx);
+        lbool result = ies.check_sat(add_axiom);
 
+        if (is_debug_enabled("dump_flattening")) // only the last segment will remain
+            dump_flattening(segment, add_axiom);
+
+        if (result == l_true) {
+            if (is_debug_enabled("model"))
+                print_model(ies.get_context(), segment);
+            return l_true;
+        }
+        else if (result == l_false) {
+            if (segment < 8) continue;
+            // std::cout << "UNSAT core:\n";
+            // for (unsigned i=0; i<ies.m_kernel.get_unsat_core_size(); i++) {
+            //     std::cout << mk_pp(ies.m_kernel.get_unsat_core_expr(i), m) << std::endl;
+            // }
+            block_curr_assignment();
+            return l_false;
+        }
+        else {
+            SASSERT(false);
+        }
+    }
+}
 expr_ref_vector theory_seq::flatten_equalities(int size) {
     DEBUG("fc","Enter flatten_equalities\n";);
     expr_ref_vector add_axiom(m);
@@ -1260,36 +1291,13 @@ final_check_status theory_seq::final_check_eh() {
 
     if (is_debug_enabled("assignment")) ctx.display_assignment(std::cout);
 
-    std::vector<int> segment_vector = get_segment_vector();
-    for (int segment : segment_vector) {
-        expr_ref_vector add_axiom(m);
-        add_axiom.append(flatten_equalities(segment));
-        add_axiom.append(handle_disequalities(segment));
-        int_expr_solver ies(m, get_fparams());
-        ies.initialize(ctx);
-        lbool result = ies.check_sat(add_axiom);
 
-        if (is_debug_enabled("dump_flattening")) // only the last segment will remain
-            dump_flattening(segment, add_axiom);
-
-        if (result == l_true) {
-            if (is_debug_enabled("model"))
-                print_model(ies.get_context(), segment);
-            return FC_DONE;
-        }
-        else if (result == l_false) {
-            if (segment < 8) continue;
-            // std::cout << "UNSAT core:\n";
-            // for (unsigned i=0; i<ies.m_kernel.get_unsat_core_size(); i++) {
-            //     std::cout << mk_pp(ies.m_kernel.get_unsat_core_expr(i), m) << std::endl;
-            // }
-            block_curr_assignment();
-            return FC_CONTINUE;
-        }
-        else {
-            SASSERT(false);
-        }
+    if(flatten_string_constraints()){
+        return FC_DONE;
+    }else{
+        return FC_CONTINUE;
     }
+
 
     if (check_parikh_image()) {
         TRACE("seq", tout << "check_parikh_image\n";);
