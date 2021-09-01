@@ -530,8 +530,10 @@ namespace smt {
         void dump_flattening(int segment, const expr_ref_vector &add_axiom);
         std::vector<int> get_segment_vector();
 
-        // final check 
-        expr_ref_vector handle_disequalities(int size);
+        // final check
+        bool flatten_string_constraints();
+
+        expr_ref_vector flatten_disequalities(int size);
         expr_ref_vector flatten_equalities(int size);
         void block_curr_assignment();
         void print_terms(const expr_ref_vector& terms);
