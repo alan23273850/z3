@@ -1192,6 +1192,10 @@ void theory_seq::print_model(context &local_ctx, int size) {
 std::string header() {
     std::stringstream ss;
     ss << "(declare-fun seq.eq (String String) Bool)\n"
+        << "(declare-fun seq.idx.left (String String) String)\n"
+        << "(declare-fun seq.idx.right (String String) String)\n"
+        << "(declare-fun seq.first (String) String)\n"
+        << "(declare-fun seq.last (String) String)\n"
         << "(declare-fun seq.tail (String Int) String)\n"
         << "(declare-fun seq.prefix.c (String String) String)\n"
         << "(declare-fun seq.prefix.d (String String) String)\n"
@@ -1207,6 +1211,7 @@ std::string header() {
         << "(declare-fun seq.fa_self_loop_counter (String Int) Int)\n"
         << "(declare-fun seq.nq_counter (Int Int Int Int) Int)\n"
         << "(declare-fun char.bit (Unicode) Bool)\n"
+        << "(declare-fun seq.unit (String) String)\n"
         << "(declare-fun seq.unit-inv (String) Unicode)\n"
         << "(declare-fun seq.max_unfolding () Bool)\n"
         << "(declare-fun seq.length_limit () Bool)\n"
