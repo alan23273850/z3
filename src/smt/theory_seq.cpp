@@ -1340,44 +1340,14 @@ final_check_status theory_seq::final_check_eh() {
         return FC_DONE;
     }
 
-    if (m_ncs.size()>0 || m_rcs.size()>0)
-        return FC_GIVEUP;
-
-    if (m_unhandled_expr) {
-        TRACEFIN("give_up");
-        TRACE("seq", tout << "unhandled: " << mk_pp(m_unhandled_expr, m) << "\n";);
-        return FC_GIVEUP;
-    }
-
     m_new_propagation = false;
     TRACE("seq", display(tout << "level: " << ctx.get_scope_level() << "\n"););
     TRACE("seq_verbose", ctx.display(tout););
-
-    print_formulas("Entering final check:");
-
-    // std::cout << m_eqs.size() << " " << m_nqs.size() << " " << m_ncs.size() << " " << m_rcs.size() << "\n";
-    // for (int i=0; i<m_eqs.size(); i++) display_equation(std::cout, m_eqs[i]), std::cout << "===========\n";
-    // for (int i=0; i<m_nqs.size(); i++) display_disequation(std::cout, m_nqs[i]), std::cout << "===========\n";
-    // for (int i=0; i<m_ncs.size(); i++) display_nc(std::cout, m_ncs[i]), std::cout << "===========\n";
-    if (is_debug_enabled("dump_formula")) // only the last formula will remain
-        dump_formula();
-
-    if (is_debug_enabled("assignment")) ctx.display_assignment(std::cout);
-
-
-    if (flatten_string_constraints()) {
-        return FC_DONE;
-    } else {
-        block_current_assignment();
-        return FC_CONTINUE;
-    }
-
 
     if (check_parikh_image()) {
         TRACE("seq", tout << "check_parikh_image\n";);
         return FC_CONTINUE;
     }
-
 //     if (simplify_and_solve_eqs()) {
 //         ++m_stats.m_solve_eqs;
 //         TRACEFIN("solve_eqs");
@@ -1403,11 +1373,11 @@ final_check_status theory_seq::final_check_eh() {
 //         TRACEFIN("zero_length");
 //         return FC_CONTINUE;
 //     }
-     if (get_fparams().m_split_w_len && len_based_split()) {
-         ++m_stats.m_branch_variable;
-         TRACEFIN("split_based_on_length");
-         return FC_CONTINUE;
-     }
+    if (get_fparams().m_split_w_len && len_based_split()) {
+        ++m_stats.m_branch_variable;
+        TRACEFIN("split_based_on_length");
+        return FC_CONTINUE;
+    }
 //     if (fixed_length()) {
 //         ++m_stats.m_fixed_length;
 //         TRACEFIN("fixed_length");
@@ -1464,6 +1434,33 @@ final_check_status theory_seq::final_check_eh() {
 //         TRACEFIN("branch_ne");
 //         return FC_CONTINUE;
 //     }
+
+    if (m_ncs.size()>0 || m_rcs.size()>0)
+        return FC_GIVEUP;
+
+    if (m_unhandled_expr) {
+        TRACEFIN("give_up");
+        TRACE("seq", tout << "unhandled: " << mk_pp(m_unhandled_expr, m) << "\n";);
+        return FC_GIVEUP;
+    }
+
+    print_formulas("Entering final check:");
+
+    // std::cout << m_eqs.size() << " " << m_nqs.size() << " " << m_ncs.size() << " " << m_rcs.size() << "\n";
+    // for (int i=0; i<m_eqs.size(); i++) display_equation(std::cout, m_eqs[i]), std::cout << "===========\n";
+    // for (int i=0; i<m_nqs.size(); i++) display_disequation(std::cout, m_nqs[i]), std::cout << "===========\n";
+    // for (int i=0; i<m_ncs.size(); i++) display_nc(std::cout, m_ncs[i]), std::cout << "===========\n";
+    if (is_debug_enabled("dump_formula")) // only the last formula will remain
+        dump_formula();
+
+    if (is_debug_enabled("assignment")) ctx.display_assignment(std::cout);
+
+    if (flatten_string_constraints()) {
+        return FC_DONE;
+    } else {
+        block_current_assignment();
+        return FC_CONTINUE;
+    }
 
     if (is_solved()) {
         //scoped_enable_trace _se;
