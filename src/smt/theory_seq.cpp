@@ -351,7 +351,8 @@ theory_seq::theory_seq(context& ctx):
     m_new_solution(false),
     m_new_propagation(false),
     FA_left(m),
-    FA_right(m) {
+    FA_right(m),
+    nonnegative_variables(m) {
 }
 
 theory_seq::~theory_seq() {
@@ -522,23 +523,23 @@ void theory_seq::print_formulas(zstring msg){
 
 expr_ref theory_seq::mk_parikh_image_counter(expr *var, int ch) {
     expr_ref result = m_sk.mk_parikh_image_counter(var, ch);
-    add_axiom(mk_literal(m_autil.mk_ge(result, m_autil.mk_int(0))));
+    nonnegative_variables.push_back(m_autil.mk_ge(result, m_autil.mk_int(0)));
     return result;
 }
 expr_ref theory_seq::mk_FA_self_loop_char(expr *var, int i) {
     expr_ref result = m_sk.mk_FA_self_loop_char(var, i);
-    add_axiom(mk_literal(m_autil.mk_ge(result, m_autil.mk_int(0))));
+    nonnegative_variables.push_back(m_autil.mk_ge(result, m_autil.mk_int(0)));
     return result;
 }
 expr_ref theory_seq::mk_FA_self_loop_counter(expr *var, int i) {
     expr_ref result = m_sk.mk_FA_self_loop_counter(var, i);
-    add_axiom(mk_literal(m_autil.mk_ge(result, m_autil.mk_int(0))));
+    nonnegative_variables.push_back(m_autil.mk_ge(result, m_autil.mk_int(0)));
     return result;
 }
 template <typename T>
 expr_ref theory_seq::mk_PFA_loop_counter(formula_type type, const T &id, int i, int j) {
     expr_ref result = m_sk.mk_PFA_loop_counter(type, id, i, j);
-    add_axiom(mk_literal(m_autil.mk_ge(result, m_autil.mk_int(0))));
+    nonnegative_variables.push_back(m_autil.mk_ge(result, m_autil.mk_int(0)));
     return result;
 }
 template <typename T>
@@ -548,12 +549,12 @@ expr_ref theory_seq::mk_PFA_edge_selection(formula_type type, const T &id, const
 }
 expr_ref theory_seq::mk_nq_char(const std::pair<int, int> &id, nq_bridge_part part, int i) {
     expr_ref result = m_sk.mk_nq_char(id, part, i);
-    add_axiom(mk_literal(m_autil.mk_ge(result, m_autil.mk_int(0))));
+    nonnegative_variables.push_back(m_autil.mk_ge(result, m_autil.mk_int(0)));
     return result;
 }
 expr_ref theory_seq::mk_nq_counter(const std::pair<int, int> &id, nq_bridge_part part, int i) {
     expr_ref result = m_sk.mk_nq_counter(id, part, i);
-    add_axiom(mk_literal(m_autil.mk_ge(result, m_autil.mk_int(0))));
+    nonnegative_variables.push_back(m_autil.mk_ge(result, m_autil.mk_int(0)));
     return result;
 }
 
@@ -867,9 +868,11 @@ expr_ref_vector theory_seq::length_of_string_variable_equals_sum_of_loop_length_
 bool theory_seq::flatten_string_constraints() {
     std::vector<int> segment_vector = get_segment_vector();
     for (int segment : segment_vector) {
+        nonnegative_variables.reset();
         expr_ref_vector add_axiom(m);
         add_axiom.append(flatten_equalities(segment));
         add_axiom.append(flatten_disequalities(segment));
+        add_axiom.append(nonnegative_variables);
         int_expr_solver ies(m, get_fparams());
         ies.initialize(ctx);
         lbool result = ies.check_sat(add_axiom);
@@ -893,7 +896,6 @@ bool theory_seq::flatten_string_constraints() {
             SASSERT(false);
         }
     }
-    block_curr_assignment();
     return false;
 }
 expr_ref_vector theory_seq::flatten_equalities(int size) {
@@ -1334,6 +1336,7 @@ final_check_status theory_seq::final_check_eh() {
     if (flatten_string_constraints()) {
         return FC_DONE;
     } else {
+        block_curr_assignment();
         return FC_CONTINUE;
     }
 
