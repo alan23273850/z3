@@ -388,7 +388,7 @@ struct scoped_enable_trace {
     }
 };
 
-void theory_seq::block_curr_assignment() {
+void theory_seq::block_current_assignment() {
     DEBUG("block",__LINE__ << " enter " << __FUNCTION__ << std::endl;)
     add_axiom(mk_literal(m.mk_false()));
 //    return;
