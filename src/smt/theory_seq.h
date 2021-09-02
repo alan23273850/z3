@@ -537,7 +537,7 @@ namespace smt {
 
         expr_ref_vector flatten_disequalities(int size);
         expr_ref_vector flatten_equalities(int size);
-        void block_curr_assignment();
+        void block_current_assignment();
         void print_terms(const expr_ref_vector& terms);
         void print_eq_from_enode(const expr_ref_vector& terms);
 

@@ -388,7 +388,7 @@ struct scoped_enable_trace {
     }
 };
 
-void theory_seq::block_curr_assignment() {
+void theory_seq::block_current_assignment() {
     DEBUG("fc",__LINE__ << " enter " << __FUNCTION__ << std::endl;)
 
     expr *refinement = nullptr;
@@ -399,11 +399,43 @@ void theory_seq::block_curr_assignment() {
             eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
             expr *const e = m.mk_eq(eq.v, eq.e);
             refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
+            expr_ref_vector lhs(m);
+            m_util.str.get_concat_units(eq.v, lhs);
+            expr_ref_vector rhs(m);
+            m_util.str.get_concat_units(eq.e, rhs);
+            for (const auto &terms: {lhs, rhs}) {
+                for (const auto &term: terms) {
+                    if (ensure_enode(term)->get_root() != ensure_enode(term)) {
+                        expr_ref_vector lhs(m);
+                        m_util.str.get_concat_units(ensure_enode(term)->get_root()->get_expr(), lhs);
+                        expr_ref_vector rhs(m);
+                        m_util.str.get_concat_units(term, rhs);
+                        if (lhs.empty()) lhs.push_back(m_util.str.mk_string(""));
+                        if (rhs.empty()) rhs.push_back(m_util.str.mk_string(""));
+                        expr *const e = m.mk_eq(mk_concat(lhs), mk_concat(rhs));
+                        refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
+                    }
+                }
+            }
         }
     }
     for (const auto& we : m_eqs) {
         expr *const e = m.mk_eq(mk_concat(we.ls), mk_concat(we.rs));
         refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
+        for (const auto &terms: {we.ls, we.rs}) {
+            for (const auto &term: terms) {
+                if (ensure_enode(term)->get_root() != ensure_enode(term)) {
+                    expr_ref_vector lhs(m);
+                    m_util.str.get_concat_units(ensure_enode(term)->get_root()->get_expr(), lhs);
+                    expr_ref_vector rhs(m);
+                    m_util.str.get_concat_units(term, rhs);
+                    if (lhs.empty()) lhs.push_back(m_util.str.mk_string(""));
+                    if (rhs.empty()) rhs.push_back(m_util.str.mk_string(""));
+                    expr *const e = m.mk_eq(mk_concat(lhs), mk_concat(rhs));
+                    refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
+                }
+            }
+        }
     }
     for (const auto& wi : m_nqs) {
         expr *const e = m.mk_not(m.mk_eq(wi.l(), wi.r()));
@@ -1337,7 +1369,7 @@ final_check_status theory_seq::final_check_eh() {
     if (flatten_string_constraints()) {
         return FC_DONE;
     } else {
-        block_curr_assignment();
+        block_current_assignment();
         return FC_CONTINUE;
     }
 
