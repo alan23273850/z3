@@ -135,6 +135,7 @@ public:
 
     void initialize(context &ctx) {
         bool on_screen = false;
+
         if (!initialized) {
             initialized = true;
             expr_ref_vector Assigns(m), Literals(m);
@@ -389,72 +390,68 @@ struct scoped_enable_trace {
 };
 
 void theory_seq::block_current_assignment() {
-    DEBUG("fc",__LINE__ << " enter " << __FUNCTION__ << std::endl;)
-
-    expr *refinement = nullptr;
-    DEBUG("fc",__LINE__ << "[Refinement]\nformulas:\n";)
-
-    for (const auto& eq : m_rep) {
-        if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
-            eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
-            expr *const e = m.mk_eq(eq.v, eq.e);
-            refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
-            expr_ref_vector lhs(m);
-            m_util.str.get_concat_units(eq.v, lhs);
-            expr_ref_vector rhs(m);
-            m_util.str.get_concat_units(eq.e, rhs);
-            for (const auto &terms: {lhs, rhs}) {
-                for (const auto &term: terms) {
-                    if (ensure_enode(term)->get_root() != ensure_enode(term)) {
-                        expr_ref_vector lhs(m);
-                        m_util.str.get_concat_units(ensure_enode(term)->get_root()->get_expr(), lhs);
-                        expr_ref_vector rhs(m);
-                        m_util.str.get_concat_units(term, rhs);
-                        if (lhs.empty()) lhs.push_back(m_util.str.mk_string(""));
-                        if (rhs.empty()) rhs.push_back(m_util.str.mk_string(""));
-                        expr *const e = m.mk_eq(mk_concat(lhs), mk_concat(rhs));
-                        refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
-                    }
-                }
-            }
-        }
-    }
-    for (const auto& we : m_eqs) {
-        expr *const e = m.mk_eq(mk_concat(we.ls), mk_concat(we.rs));
-        refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
-        for (const auto &terms: {we.ls, we.rs}) {
-            for (const auto &term: terms) {
-                if (ensure_enode(term)->get_root() != ensure_enode(term)) {
-                    expr_ref_vector lhs(m);
-                    m_util.str.get_concat_units(ensure_enode(term)->get_root()->get_expr(), lhs);
-                    expr_ref_vector rhs(m);
-                    m_util.str.get_concat_units(term, rhs);
-                    if (lhs.empty()) lhs.push_back(m_util.str.mk_string(""));
-                    if (rhs.empty()) rhs.push_back(m_util.str.mk_string(""));
-                    expr *const e = m.mk_eq(mk_concat(lhs), mk_concat(rhs));
-                    refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
-                }
-            }
-        }
-    }
-    for (const auto& wi : m_nqs) {
-        expr *const e = m.mk_not(m.mk_eq(wi.l(), wi.r()));
-        refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
-    }
-    for (const auto& rc : m_rcs) {
-        expr *const e = m_util.re.mk_in_re(rc.term(),rc.re());
-        refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
-    }
-    for (const auto& nc : m_ncs) {
-        expr *const e = m.mk_not(nc.contains());
-        refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
-    }
-    if (refinement != nullptr) {
-        add_axiom(mk_literal(m.mk_not(refinement)));
-        DEBUG("fc",mk_pp(refinement,m) << '\n';)
-
-    }
-    DEBUG("fc",__LINE__ << " leave " << __FUNCTION__ << std::endl;)
+    DEBUG("block",__LINE__ << " enter " << __FUNCTION__ << std::endl;)
+    add_axiom(mk_literal(m.mk_false()));
+//    return;
+//
+//    literal_vector lits;
+//
+//    expr *refinement = nullptr;
+//    DEBUG("block",__LINE__ << "[Refinement]\nformulas:\n";)
+//
+//    for (const auto& eq : m_rep) {
+//        if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
+//            eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
+//            expr *const e = m.mk_eq(eq.v, eq.e);
+//            literal l = mk_literal(m.mk_not(e));
+//            lits.push_back( l);
+//            DEBUG("block", "[m_rep] "<<l<<"("<<mk_pp(m.mk_not(e),m)<<") \n";);
+//            refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
+//        }
+//    }
+//    for (const auto& we : m_eqs) {
+//        expr *const e = m.mk_eq(mk_concat(we.ls), mk_concat(we.rs));
+//        literal l = mk_literal(m.mk_not(e));
+//        lits.push_back( l);
+//        DEBUG("block", "[m_eqs] "<<l<<"("<<mk_pp(m.mk_not(e),m)<<") \n";);
+//        refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
+//    }
+//    for (const auto& wi : m_nqs) {
+//        expr *const e = m.mk_not(m.mk_eq(wi.l(), wi.r()));
+//        literal l = mk_literal(m.mk_not(e));
+//        lits.push_back( l);
+//        DEBUG("block", "[m_nqs] "<<l<<"("<<mk_pp(m.mk_not(e),m)<<") \n";);
+//        refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
+//    }
+//    for (const auto& rc : m_rcs) {
+//        expr *const e = m_util.re.mk_in_re(rc.term(),rc.re());
+//        literal l = mk_literal(m.mk_not(e));
+//        lits.push_back( l);
+//        DEBUG("block", "[m_rcs] "<<l<<"("<<mk_pp(m.mk_not(e),m)<<") \n";);
+//        refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
+//    }
+//    for (const auto& nc : m_ncs) {
+//        expr *const e = m.mk_not(nc.contains());
+//        literal l = mk_literal(m.mk_not(e));
+//        lits.push_back( l);
+//        DEBUG("block", "[m_ncs] "<<l<<"("<<mk_pp(m.mk_not(e),m)<<") \n";);
+//
+//        refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
+//    }
+//
+//    DEBUG("block", "block ";);
+//    for(auto& lit:lits){
+//        DEBUG("block", " "<<lit<<"("<<lit<<")";);
+//    }
+//    DEBUG("block", "\n";);
+//
+//    if (refinement != nullptr) {
+//        //add_axiom(mk_literal(m.mk_not(refinement)));
+//        add_axiom(lits);
+//        DEBUG("block",mk_pp(refinement,m) << '\n';)
+//
+//    }
+    DEBUG("block",__LINE__ << " leave " << __FUNCTION__ << std::endl;)
 }
 
 void theory_seq::print_terms(const expr_ref_vector& terms){
