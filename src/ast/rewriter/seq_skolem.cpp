@@ -256,3 +256,15 @@ expr_ref skolem::mk_nq_counter(const std::pair<int, int> &id, int part, int i) {
         std::initializer_list<expr*>({a.mk_int(id.first), a.mk_int(id.second), a.mk_int(part), a.mk_int(i)}).begin(),
         a.mk_int()), m);
 }
+
+expr_ref skolem::mk_str_to_int_char(expr *e, int i) {
+    return expr_ref(seq.mk_skolem(symbol("seq.str_to_int_char"), 2,
+        std::initializer_list<expr*>({e, a.mk_int(i)}).begin(),
+        a.mk_int()), m);
+}
+
+expr_ref skolem::mk_str_to_int_counter(expr *e, int i) {
+    return expr_ref(seq.mk_skolem(symbol("seq.str_to_int_counter"), 2,
+        std::initializer_list<expr*>({e, a.mk_int(i)}).begin(),
+        a.mk_int()), m);
+}
