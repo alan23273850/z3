@@ -586,6 +586,16 @@ expr_ref theory_seq::mk_nq_counter(const std::pair<int, int> &id, nq_bridge_part
     nonnegative_variables.push_back(m_autil.mk_ge(result, m_autil.mk_int(0)));
     return result;
 }
+expr_ref theory_seq::mk_str_to_int_char(expr *e, int i) {
+    expr_ref result = m_sk.mk_str_to_int_char(e, i);
+    nonnegative_variables.push_back(m_autil.mk_ge(result, m_autil.mk_int(0)));
+    return result;
+}
+expr_ref theory_seq::mk_str_to_int_counter(expr *e, int i) {
+    expr_ref result = m_sk.mk_str_to_int_counter(e, i);
+    nonnegative_variables.push_back(m_autil.mk_ge(result, m_autil.mk_int(0)));
+    return result;
+}
 
 expr_ref_vector theory_seq::flatten_disequalities(int size) {
     DEBUG("fc","Enter flatten_disequalities\n";);
@@ -752,6 +762,27 @@ void theory_seq::from_nq_bridge_to_FA(const std::pair<int, int> &id, formula_typ
     }
 }
 
+expr_ref_vector theory_seq::construct_str_to_int_FA(expr *e, struct FA &FA) {
+    expr_ref_vector expv(m);
+    FA.clear();
+    for (int i=0; i<4; i++) {
+        FA.characters.push_back(mk_str_to_int_char(e, i));
+        FA.counters.push_back(mk_str_to_int_counter(e, i));
+    }
+    expv.push_back(m_autil.mk_eq(mk_str_to_int_char(e, 0), m_autil.mk_int('0')));
+    for (int i=1; i<4; i++) {
+        expv.push_back(m_autil.mk_ge(mk_str_to_int_char(e, i), m_autil.mk_int('0')));
+        expv.push_back(m_autil.mk_le(mk_str_to_int_char(e, i), m_autil.mk_int('9')));
+    }
+    expv.push_back(m_autil.mk_le(mk_str_to_int_counter(e, 1), m_autil.mk_int(1)));
+    expv.push_back(m_autil.mk_le(mk_str_to_int_counter(e, 2), m_autil.mk_int(1)));
+    expv.push_back(m_autil.mk_le(mk_str_to_int_counter(e, 3), m_autil.mk_int(1)));
+    for (int i=1; i<4; i++) {
+        expv.push_back(m.mk_or(m_autil.mk_ge(mk_str_to_int_char(e, i), m_autil.mk_int(1)), m_autil.mk_eq(mk_str_to_int_char(e, i-1), m_autil.mk_int(0))));
+    }
+    return expv;
+}
+
 template <typename T>
 expr_ref_vector theory_seq::if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(formula_type type, const T &id, int i, int j) {
     expr_ref_vector expv(m);
@@ -899,6 +930,7 @@ bool theory_seq::flatten_string_constraints() {
     for (int segment : segment_vector) {
         nonnegative_variables.reset();
         expr_ref_vector add_axiom(m);
+        add_axiom.append(flatten_str_to_int(segment));
         add_axiom.append(flatten_equalities(segment));
         add_axiom.append(flatten_disequalities(segment));
         add_axiom.append(nonnegative_variables);
@@ -927,6 +959,56 @@ bool theory_seq::flatten_string_constraints() {
     }
     return false;
 }
+
+expr_ref_vector theory_seq::flatten_str_to_int(int size) {
+    DEBUG("fc", "Enter flatten_str_to_int\n";);
+    expr_ref_vector add_axiom(m);
+    for (expr *e: m_int_string) {
+        expr *s;
+        if (m_util.str.is_stoi(e, s)) { // std::cout << mk_pp(e, m) << "\n";
+            expr_ref_vector expv(m);
+            
+            expr_ref_vector lhs(m);
+            m_util.str.get_concat_units(s, lhs);
+            from_word_term_to_FA(lhs, size, FA_left);
+            expv.append(construct_str_to_int_FA(e, FA_right));
+
+            for (unsigned i = 0; i < FA_left.size(); i++) {
+                for (unsigned j = 0; j < FA_right.size(); j++) {
+                    // 1st: for each possibly valid sync loop, the two characters on that loop must be the same.
+                    expv.append(if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(STR_TO_INT, e->get_id(), i, j));
+
+                    // 2nd: only at most one in-coming edge of one state can be selected.
+                    expv.append(only_at_most_one_incoming_edge_of_one_state_can_be_selected(STR_TO_INT, e->get_id(), i, j));
+
+                    // 3rd: only at most one out-going edge of one state can be selected.
+                    expv.append(only_at_most_one_outgoing_edge_of_one_state_can_be_selected(STR_TO_INT, e->get_id(), i, j));
+
+                    // 4th: selection of self edges or out-going edges implies selection of in-coming edges
+                    expv.append(selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(STR_TO_INT, e->get_id(), i, j));
+                }
+            }
+
+            // 5th: at least one in-coming edge of final state should be selected.
+            expv.append(at_least_one_incoming_edge_of_final_state_should_be_selected(STR_TO_INT, e->get_id()));
+
+            // 6th: sum of edges for a single loop on the PFA must be mapped back to the original FA.
+            expv.append(sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(STR_TO_INT, e->get_id()));
+
+            // 7th: len(x) == sum_i { len(x_i) * times(x_i) }
+            expv.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(lhs, size));
+
+            expr_ref valid(m_autil.mk_eq(e,
+                            m_autil.mk_add(m_autil.mk_mul(m_autil.mk_int(100), mk_str_to_int_counter(e, 1), m_autil.mk_sub(mk_str_to_int_char(e, 1), m_autil.mk_int('0'))),
+                                           m_autil.mk_mul(m_autil.mk_int(10), mk_str_to_int_counter(e, 2), m_autil.mk_sub(mk_str_to_int_char(e, 2), m_autil.mk_int('0'))),
+                                           m_autil.mk_mul(mk_str_to_int_counter(e, 3), m_autil.mk_sub(mk_str_to_int_char(e, 3), m_autil.mk_int('0'))))), m);
+            expr_ref invalid(m_autil.mk_eq(e, m_autil.mk_int(-1)), m);
+            add_axiom.push_back(m.mk_or(m.mk_and(m.mk_and(expv), valid), invalid));
+        }
+    }
+    return add_axiom;
+}
+
 expr_ref_vector theory_seq::flatten_equalities(int size) {
     DEBUG("fc","Enter flatten_equalities\n";);
     expr_ref_vector add_axiom(m);
@@ -4163,7 +4245,7 @@ void theory_seq::relevant_eh(app* n) {
         m_util.str.is_replace_re(n) ||
         m_util.str.is_replace_re_all(n) ||
         m_util.str.is_itos(n) ||
-        m_util.str.is_stoi(n) ||
+        // m_util.str.is_stoi(n) ||
         // m_util.str.is_from_code(n) ||
         // m_util.str.is_to_code(n) ||
         m_util.str.is_is_digit(n)) {
