@@ -880,7 +880,7 @@ expr_ref_vector theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_ma
 
 expr_ref theory_seq::length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(expr* const &atom, int p) {
     // DEBUG("fc_verbose", "length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times:\n";);
-    // SASSERT(atom_is_const_char_unicode(atom) < 0);
+    SASSERT(atom_is_const_char_unicode(atom) < 0);
     expr_ref_vector loops(m);
     for (int i=0; i<p; i++) {
         loops.push_back(mk_FA_self_loop_counter(atom, i));
@@ -952,16 +952,80 @@ bool theory_seq::flatten_string_constraints() {
  * int.to.str
     1. n >= 0 ==> match string
     2. n <= -1 ==> output empty string
- */
+
+ * str.to.int
+    1. empty string ==> -1
+    2. non-digit appears ==> -1
+    3. only digits appear:
+       (a) to the right ==> compute stoi
+       (b) otherwise ==> assert false (i.e., we don't consider this case.)
+*/
 expr_ref_vector theory_seq::flatten_int_string_conversions(int size) {
     DEBUG("fc", "Enter flatten_int_string_conversions\n";);
     expr_ref_vector add_axiom(m);
     for (expr *e: m_int_string) {
         expr *s, *n;
-        if (m_util.str.is_itos(e, n)) { // std::cout << mk_pp(e, m) << "\n";
+        if (m_util.str.is_stoi(e, s)) { // std::cout << mk_pp(e, m) << "\n";
+            n = e;
+            zstring string_const;
+            if (m_util.str.is_string(s, string_const)) {
+                try {
+                    add_axiom.push_back(m_autil.mk_eq(n, m_autil.mk_int(std::stoi(string_const.encode()))));
+                } catch (const std::out_of_range &oor) {
+                    add_axiom.push_back(m.mk_bool_val(false));
+                    std::cerr << "Out of Range error: " << oor.what() << '\n';
+                } catch (std::exception &e) { // exception should be caught by reference
+                    add_axiom.push_back(m_autil.mk_eq(n, m_autil.mk_int(-1)));
+                }
+            }
+            else {
+                get_context().set_underapproximation_flag_to_true();
+                expr_ref_vector expv(m);
+
+                // Case 1. empty string ==> -1
+                for (int i=0; i<size; i++)
+                    expv.push_back(m_autil.mk_eq(mk_FA_self_loop_counter(s, i), m_autil.mk_int(0)));
+                expv.push_back(m_autil.mk_eq(n, m_autil.mk_int(-1)));
+                expr_ref case1(m.mk_and(expv), m);
+
+                // Case 2. non-digit appears ==> -1
+                expv.reset();
+                for (int i=0; i<size; i++)
+                    expv.push_back(m.mk_and(m_autil.mk_ge(mk_FA_self_loop_counter(s, i), m_autil.mk_int(1)), m.mk_not(m.mk_and(m_autil.mk_ge(mk_FA_self_loop_char(s, i), m_autil.mk_int('0')), m_autil.mk_le(mk_FA_self_loop_char(s, i), m_autil.mk_int('9'))))));
+                expr_ref case2(m.mk_and(m.mk_or(expv), m_autil.mk_eq(n, m_autil.mk_int(-1))), m);
+
+                // Case 3. only digits appear to the right ==> compute stoi
+                expr_ref_vector base(m);
+                base.push_back(m.mk_or(m_autil.mk_eq(mk_FA_self_loop_counter(s, 0), m_autil.mk_int(0)), m_autil.mk_eq(mk_FA_self_loop_char(s, 0), m_autil.mk_int('0'))));
+                for (int i=1; i<size; i++)
+                    base.push_back(m.mk_or(m_autil.mk_eq(mk_FA_self_loop_counter(s, i), m_autil.mk_int(0)), m.mk_and(m_autil.mk_ge(mk_FA_self_loop_char(s, i), m_autil.mk_int('0')), m_autil.mk_le(mk_FA_self_loop_char(s, i), m_autil.mk_int('9')))));
+
+                int mul = 1;
+                unsigned mask = 0;
+                expr_ref_vector valid(m), sum(m);
+                SASSERT(size <= 10);
+                for (int i=size-1; i>0; i--) {
+                    mask <<= 1; mask |= 1;
+
+                    unsigned mask_copy = mask;
+                    expv.reset();
+                    for (int j=size-1; j>0; j--) {
+                        expv.push_back(m_autil.mk_eq(mk_FA_self_loop_counter(s, j), m_autil.mk_int(mask_copy & 1)));
+                        mask_copy >>= 1;
+                    }
+                    sum.push_back(m_autil.mk_mul(m_autil.mk_int(mul), m_autil.mk_sub(mk_FA_self_loop_char(s, i), m_autil.mk_int('0'))));
+                    valid.push_back(m.mk_and(m.mk_and(expv), m_autil.mk_eq(n, m_autil.mk_add(sum))));
+
+                    mul *= 10;
+                }
+            
+                expr_ref case3(m.mk_and(m.mk_and(base), m.mk_or(valid)), m);
+                add_axiom.push_back(m.mk_and(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(s, size), m.mk_or(case1, case2, case3)));
+            }
+        } else if (m_util.str.is_itos(e, n)) { // std::cout << mk_pp(e, m) << "\n";
             s = e;
             get_context().set_underapproximation_flag_to_true();
-            expr_ref_vector ands(m);
+            expr_ref_vector expv(m);
 
             // Case 1. n >= 0
             int mul = 1;
@@ -972,26 +1036,29 @@ expr_ref_vector theory_seq::flatten_int_string_conversions(int size) {
                 mask <<= 1; mask |= 1;
 
                 unsigned mask_copy = mask;
-                ands.reset();
+                expv.reset();
                 for (int j=size-1; j>=0; j--) {
-                    ands.push_back(m_autil.mk_eq(mk_FA_self_loop_counter(s, j), m_autil.mk_int(mask_copy & 1)));
+                    expv.push_back(m_autil.mk_eq(mk_FA_self_loop_counter(s, j), m_autil.mk_int(mask_copy & 1)));
                     if (mask_copy & 1)
-                        ands.push_back(m.mk_and(m_autil.mk_ge(mk_FA_self_loop_char(s, j), m_autil.mk_int('0')), m_autil.mk_le(mk_FA_self_loop_char(s, j), m_autil.mk_int('9'))));
+                        expv.push_back(m.mk_and(m_autil.mk_ge(mk_FA_self_loop_char(s, j), m_autil.mk_int('0')), m_autil.mk_le(mk_FA_self_loop_char(s, j), m_autil.mk_int('9'))));
                     mask_copy >>= 1;
                 }
                 sum.push_back(m_autil.mk_mul(m_autil.mk_int(mul), m_autil.mk_sub(mk_FA_self_loop_char(s, i), m_autil.mk_int('0'))));
-                valid.push_back(m.mk_and(m.mk_and(ands), m_autil.mk_eq(n, m_autil.mk_add(sum))));
+                valid.push_back(m.mk_and(m.mk_and(expv), m_autil.mk_eq(n, m_autil.mk_add(sum))));
 
                 mul *= 10;
             }
-            expr_ref case1(m.mk_and(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(s, size), m.mk_or(valid)), m);
+            expr_ref case1(m.mk_and(m_autil.mk_ge(n, m_autil.mk_int(0)), m.mk_or(valid)), m);
 
             // Case 2. n <= -1
-            expr_ref case2(m.mk_and(m_autil.mk_le(n, m_autil.mk_int(-1)), m_autil.mk_eq(m_util.str.mk_length(s), m_autil.mk_int(0))), m);
+            expv.reset();
+            for (int i=0; i<size; i++)
+                expv.push_back(m_autil.mk_eq(mk_FA_self_loop_counter(s, i), m_autil.mk_int(0)));
+            expr_ref case2(m.mk_and(m_autil.mk_le(n, m_autil.mk_int(-1)), m.mk_and(expv)), m);
 
             add_axiom.push_back(m.mk_or(case1, case2));
-        } else if (m_util.str.is_stoi(e, s)) {
-        } else SASSERT(false);
+        } else
+            SASSERT(false);
     }
     return add_axiom;
 }
@@ -1191,9 +1258,9 @@ void theory_seq::print_term(const arith_value &local_arith_value, const expr_ref
             DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
             for (int i=0; i<size; i++) {
                 if (!get_num_value(local_arith_value, mk_FA_self_loop_counter(atom, i), _counter))
-                    SASSERT(false);
+                    { SASSERT(i == 0); break; }
                 if (!get_num_value(local_arith_value, mk_FA_self_loop_char(atom, i), _unicode))
-                    SASSERT(false);
+                    { SASSERT(i == 0); break; }
                 for (int j=0; j<_counter; j++) {
                     DISPLAYMODEL("(" << _unicode << ")";);
                 }
@@ -1216,9 +1283,9 @@ void theory_seq::print_FA_parameters(const arith_value &local_arith_value, const
             rational _counter, _unicode;
             for (int i=0; i<size; i++) {
                 if (!get_num_value(local_arith_value, mk_FA_self_loop_counter(atom, i), _counter))
-                SASSERT(false);
+                    { SASSERT(i == 0); break; }
                 if (!get_num_value(local_arith_value, mk_FA_self_loop_char(atom, i), _unicode))
-                SASSERT(false);
+                    { SASSERT(i == 0); break; }
                 DISPLAYPARAMETER("mk_FA_self_loop_char("<<mk_pp(atom,m)<<", "<<i<< ") = " << _unicode << "\n";);
                 DISPLAYPARAMETER("mk_FA_self_loop_counter("<<mk_pp(atom,m)<<", "<<i<< ") = " << _counter << "\n";);
             }
@@ -1314,6 +1381,8 @@ std::string header() {
         << "(declare-fun seq.unit-inv (String) Unicode)\n"
         << "(declare-fun seq.max_unfolding () Bool)\n"
         << "(declare-fun seq.length_limit () Bool)\n"
+        << "(declare-fun seq.stoi (String Int) Int)\n"
+        << "(declare-fun seq.digit2int (Unicode) Int)\n"
         << "(declare-fun x () String)\n\n";
     return ss.str();
 }
@@ -4422,9 +4491,9 @@ void theory_seq::relevant_eh(app* n) {
 
     if (m_util.str.is_replace_all(n) ||
         m_util.str.is_replace_re(n) ||
-        m_util.str.is_replace_re_all(n) ||
+        m_util.str.is_replace_re_all(n) //||
         // m_util.str.is_itos(n) ||
-        m_util.str.is_stoi(n)
+        // m_util.str.is_stoi(n)
         ) {
         add_unhandled_expr(n);
     }

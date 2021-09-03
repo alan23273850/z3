@@ -447,7 +447,8 @@ namespace smt {
             REP,
             ENODE,
             DISEQ_LHS,
-            DISEQ_RHS
+            DISEQ_RHS,
+            STR_TO_INT
         };
         inline const char* from_type_to_string(formula_type type) {
             switch (type) {
