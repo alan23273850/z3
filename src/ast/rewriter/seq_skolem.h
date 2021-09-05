@@ -109,8 +109,6 @@ namespace seq {
         expr_ref mk_PFA_edge_selection(int type, const std::pair<int, int> &id, const std::pair<int, int> &state1, const std::pair<int, int> &state2);
         expr_ref mk_nq_char(const std::pair<int, int> &id, int part, int i);
         expr_ref mk_nq_counter(const std::pair<int, int> &id, int part, int i);
-        expr_ref mk_str_to_int_char(expr *e, int i);
-        expr_ref mk_str_to_int_counter(expr *e, int i);
 
         bool is_skolem(symbol const& s, expr const* e) const;
         bool is_skolem(expr const* e) const { return seq.is_skolem(e); }

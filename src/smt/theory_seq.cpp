@@ -587,16 +587,6 @@ expr_ref theory_seq::mk_nq_counter(const std::pair<int, int> &id, nq_bridge_part
     nonnegative_variables.push_back(m_autil.mk_ge(result, m_autil.mk_int(0)));
     return result;
 }
-expr_ref theory_seq::mk_str_to_int_char(expr *e, int i) {
-    expr_ref result = m_sk.mk_str_to_int_char(e, i);
-    nonnegative_variables.push_back(m_autil.mk_ge(result, m_autil.mk_int(0)));
-    return result;
-}
-expr_ref theory_seq::mk_str_to_int_counter(expr *e, int i) {
-    expr_ref result = m_sk.mk_str_to_int_counter(e, i);
-    nonnegative_variables.push_back(m_autil.mk_ge(result, m_autil.mk_int(0)));
-    return result;
-}
 
 expr_ref_vector theory_seq::flatten_disequalities(int size) {
     DEBUG("fc","Enter flatten_disequalities\n";);
@@ -761,27 +751,6 @@ void theory_seq::from_nq_bridge_to_FA(const std::pair<int, int> &id, formula_typ
         FA.characters.push_back(mk_nq_char(id, part[1], i));
         FA.counters.push_back(mk_nq_counter(id, part[1], i));
     }
-}
-
-expr_ref_vector theory_seq::construct_str_to_int_FA(expr *e, struct FA &FA) {
-    expr_ref_vector expv(m);
-    FA.clear();
-    for (int i=0; i<4; i++) {
-        FA.characters.push_back(mk_str_to_int_char(e, i));
-        FA.counters.push_back(mk_str_to_int_counter(e, i));
-    }
-    expv.push_back(m_autil.mk_eq(mk_str_to_int_char(e, 0), m_autil.mk_int('0')));
-    for (int i=1; i<4; i++) {
-        expv.push_back(m_autil.mk_ge(mk_str_to_int_char(e, i), m_autil.mk_int('0')));
-        expv.push_back(m_autil.mk_le(mk_str_to_int_char(e, i), m_autil.mk_int('9')));
-    }
-    expv.push_back(m_autil.mk_le(mk_str_to_int_counter(e, 1), m_autil.mk_int(1)));
-    expv.push_back(m_autil.mk_le(mk_str_to_int_counter(e, 2), m_autil.mk_int(1)));
-    expv.push_back(m_autil.mk_le(mk_str_to_int_counter(e, 3), m_autil.mk_int(1)));
-    for (int i=1; i<4; i++) {
-        expv.push_back(m.mk_or(m_autil.mk_ge(mk_str_to_int_char(e, i), m_autil.mk_int(1)), m_autil.mk_eq(mk_str_to_int_char(e, i-1), m_autil.mk_int(0))));
-    }
-    return expv;
 }
 
 template <typename T>
@@ -961,50 +930,61 @@ bool theory_seq::flatten_string_constraints() {
     return false;
 }
 
+/** \brief
+    1. empty string ==> -1
+    2. non-digit appears ==> -1
+    3. only digits appear:
+       (a) to the right ==> compute stoi
+       (b) otherwise ==> assert false (i.e., we don't consider this case.)
+ */
 expr_ref_vector theory_seq::flatten_str_to_int(int size) {
     DEBUG("fc", "Enter flatten_str_to_int\n";);
     expr_ref_vector add_axiom(m);
     for (expr *e: m_int_string) {
         expr *s;
         if (m_util.str.is_stoi(e, s)) { // std::cout << mk_pp(e, m) << "\n";
+            get_context().set_underapproximation_flag_to_true();
             expr_ref_vector expv(m);
-            
-            expr_ref_vector lhs(m);
-            m_util.str.get_concat_units(s, lhs);
-            from_word_term_to_FA(lhs, size, FA_left);
-            expv.append(construct_str_to_int_FA(e, FA_right));
 
-            for (unsigned i = 0; i < FA_left.size(); i++) {
-                for (unsigned j = 0; j < FA_right.size(); j++) {
-                    // 1st: for each possibly valid sync loop, the two characters on that loop must be the same.
-                    expv.append(if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(STR_TO_INT, e->get_id(), i, j));
+            // Case 1. empty string ==> -1
+            for (int i=0; i<size; i++)
+                expv.push_back(m_autil.mk_eq(mk_FA_self_loop_counter(s, i), m_autil.mk_int(0)));
+            expv.push_back(m_autil.mk_eq(e, m_autil.mk_int(-1)));
+            expr_ref case1(m.mk_and(expv), m);
 
-                    // 2nd: only at most one in-coming edge of one state can be selected.
-                    expv.append(only_at_most_one_incoming_edge_of_one_state_can_be_selected(STR_TO_INT, e->get_id(), i, j));
+            // Case 2. non-digit appears ==> -1
+            expv.reset();
+            for (int i=0; i<size; i++)
+                expv.push_back(m.mk_and(m_autil.mk_ge(mk_FA_self_loop_counter(s, i), m_autil.mk_int(1)), m.mk_not(m.mk_and(m_autil.mk_ge(mk_FA_self_loop_char(s, i), m_autil.mk_int('0')), m_autil.mk_le(mk_FA_self_loop_char(s, i), m_autil.mk_int('9'))))));
+            expr_ref case2(m.mk_and(m.mk_or(expv), m_autil.mk_eq(e, m_autil.mk_int(-1))), m);
 
-                    // 3rd: only at most one out-going edge of one state can be selected.
-                    expv.append(only_at_most_one_outgoing_edge_of_one_state_can_be_selected(STR_TO_INT, e->get_id(), i, j));
+            // Case 3. only digits appear to the right ==> compute stoi
+            expr_ref_vector base(m);
+            base.push_back(m.mk_or(m_autil.mk_eq(mk_FA_self_loop_counter(s, 0), m_autil.mk_int(0)), m_autil.mk_eq(mk_FA_self_loop_char(s, 0), m_autil.mk_int('0'))));
+            for (int i=1; i<size; i++)
+                base.push_back(m.mk_or(m_autil.mk_eq(mk_FA_self_loop_counter(s, i), m_autil.mk_int(0)), m.mk_and(m_autil.mk_ge(mk_FA_self_loop_char(s, i), m_autil.mk_int('0')), m_autil.mk_le(mk_FA_self_loop_char(s, i), m_autil.mk_int('9')))));
 
-                    // 4th: selection of self edges or out-going edges implies selection of in-coming edges
-                    expv.append(selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(STR_TO_INT, e->get_id(), i, j));
+            int mul = 1;
+            unsigned mask = 0;
+            expr_ref_vector valid(m), sum(m);
+            SASSERT(size <= 10);
+            for (int i=size-1; i>0; i--) {
+                mask <<= 1; mask |= 1;
+
+                unsigned mask_copy = mask;
+                expv.reset();
+                for (int j=size-1; j>0; j--) {
+                    expv.push_back(m_autil.mk_eq(mk_FA_self_loop_counter(s, j), m_autil.mk_int(mask_copy & 1)));
+                    mask_copy >>= 1;
                 }
+                sum.push_back(m_autil.mk_mul(m_autil.mk_int(mul), m_autil.mk_sub(mk_FA_self_loop_char(s, i), m_autil.mk_int('0'))));
+                valid.push_back(m.mk_and(m.mk_and(expv), m_autil.mk_eq(e, m_autil.mk_add(sum))));
+
+                mul *= 10;
             }
-
-            // 5th: at least one in-coming edge of final state should be selected.
-            expv.append(at_least_one_incoming_edge_of_final_state_should_be_selected(STR_TO_INT, e->get_id()));
-
-            // 6th: sum of edges for a single loop on the PFA must be mapped back to the original FA.
-            expv.append(sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(STR_TO_INT, e->get_id()));
-
-            // 7th: len(x) == sum_i { len(x_i) * times(x_i) }
-            expv.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(lhs, size));
-
-            expr_ref valid(m_autil.mk_eq(e,
-                            m_autil.mk_add(m_autil.mk_mul(m_autil.mk_int(100), mk_str_to_int_counter(e, 1), m_autil.mk_sub(mk_str_to_int_char(e, 1), m_autil.mk_int('0'))),
-                                           m_autil.mk_mul(m_autil.mk_int(10), mk_str_to_int_counter(e, 2), m_autil.mk_sub(mk_str_to_int_char(e, 2), m_autil.mk_int('0'))),
-                                           m_autil.mk_mul(mk_str_to_int_counter(e, 3), m_autil.mk_sub(mk_str_to_int_char(e, 3), m_autil.mk_int('0'))))), m);
-            expr_ref invalid(m_autil.mk_eq(e, m_autil.mk_int(-1)), m);
-            add_axiom.push_back(m.mk_or(m.mk_and(m.mk_and(expv), valid), invalid));
+            
+            expr_ref case3(m.mk_and(m.mk_and(base), m.mk_or(valid)), m);
+            add_axiom.push_back(m.mk_or(case1, case2, case3));
         }
     }
     return add_axiom;

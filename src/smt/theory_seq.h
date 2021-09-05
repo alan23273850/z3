@@ -513,15 +513,12 @@ namespace smt {
         template <typename T> expr_ref mk_PFA_edge_selection(formula_type type, const T &id, const std::pair<int, int> &state1, const std::pair<int, int> &state2);
         expr_ref mk_nq_char(const std::pair<int, int> &id, nq_bridge_part part, int i);
         expr_ref mk_nq_counter(const std::pair<int, int> &id, nq_bridge_part part, int i);
-        expr_ref mk_str_to_int_char(expr *e, int i);
-        expr_ref mk_str_to_int_counter(expr *e, int i);
 
         struct FA FA_left, FA_right;
         bool atom_is_const_char(expr *const e, expr* &ch);
         bool can_be_a_valid_sync_loop(int i, int j);
         void from_word_term_to_FA(const expr_ref_vector &term, int p, struct FA &FA);
         void from_nq_bridge_to_FA(const std::pair<int, int> &id, formula_type type, int p, struct FA &FA);
-        expr_ref_vector construct_str_to_int_FA(expr *e, struct FA &FA);
         template <typename T> expr_ref_vector if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(formula_type type, const T &id, int i, int j);
         template <typename T> expr_ref_vector only_at_most_one_incoming_edge_of_one_state_can_be_selected(formula_type type, const T &id, int i, int j);
         template <typename T> expr_ref_vector only_at_most_one_outgoing_edge_of_one_state_can_be_selected(formula_type type, const T &id, int i, int j);
