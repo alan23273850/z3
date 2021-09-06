@@ -536,7 +536,7 @@ namespace smt {
         expr_ref_vector nonnegative_variables;
         bool flatten_string_constraints();
 
-        expr_ref_vector flatten_str_to_int(int size);
+        expr_ref_vector flatten_int_string_conversions(int size);
         expr_ref_vector flatten_disequalities(int size);
         expr_ref_vector flatten_equalities(int size);
         void block_current_assignment();
