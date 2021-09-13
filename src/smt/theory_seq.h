@@ -525,6 +525,7 @@ namespace smt {
         template <typename T> expr_ref_vector selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(formula_type type, const T &id, int i, int j);
         template <typename T> expr_ref_vector at_least_one_incoming_edge_of_final_state_should_be_selected(formula_type type, const T &id);
         template <typename T> expr_ref_vector sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(formula_type type, const T &id);
+        expr_ref length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(expr* const &atom, int p);
         expr_ref_vector length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const expr_ref_vector &term, int p);
         /***************************************************************************************************/
 
