@@ -878,19 +878,23 @@ expr_ref_vector theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_ma
     return expv;
 }
 
+expr_ref theory_seq::length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(expr* const &atom, int p) {
+    // DEBUG("fc_verbose", "length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times:\n";);
+    SASSERT(atom_is_const_char_unicode(atom) < 0);
+    expr_ref_vector loops(m);
+    for (int i=0; i<p; i++) {
+        loops.push_back(mk_FA_self_loop_counter(atom, i));
+    }
+    expr_ref sum_loop(m_autil.mk_add(loops), m);
+    DEBUG("fc_verbose", mk_pp(expr_ref(m_autil.mk_eq(mk_len(atom), sum_loop), m), m) << "\n";);
+    return expr_ref(m.mk_eq(m_util.str.mk_length(atom), sum_loop), m);
+}
 expr_ref_vector theory_seq::length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(const expr_ref_vector &term, int p) {
-    DEBUG("fc_verbose","length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times:\n";);
+    DEBUG("fc_verbose", "length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times:\n";);
     expr_ref_vector expv(m);
     for (const auto &atom: term) {
         if (atom_is_const_char_unicode(atom) < 0) {
-            expr_ref_vector loops(m);
-            for (int i=0; i<p; i++) {
-                loops.push_back(mk_FA_self_loop_counter(atom, i));
-            }
-            expr_ref sum_loop(m_autil.mk_add(loops), m);
-            // add_axiom(mk_literal(m.mk_eq(m_util.str.mk_length(atom), sum_loop)));
-            expv.push_back(m.mk_eq(m_util.str.mk_length(atom), sum_loop));
-            DEBUG("fc_verbose",mk_pp(expr_ref(m_autil.mk_eq(mk_len(atom), sum_loop), m), m) << "\n";);
+            expv.push_back(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(atom, p));
         }
     }
     return expv;
