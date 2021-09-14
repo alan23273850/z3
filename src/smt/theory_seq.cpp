@@ -904,6 +904,7 @@ bool theory_seq::flatten_string_constraints() {
     for (int segment : segment_vector) {
         nonnegative_variables.reset();
         expr_ref_vector add_axiom(m);
+        add_axiom.append(flatten_int_string_conversions(segment));
         add_axiom.append(flatten_equalities(segment));
         add_axiom.append(flatten_disequalities(segment));
         add_axiom.append(check_contains(segment));
@@ -946,6 +947,55 @@ bool theory_seq::flatten_string_constraints() {
     }
     return false;
 }
+
+/** \brief
+ * int.to.str
+    1. n >= 0 ==> match string
+    2. n <= -1 ==> output empty string
+ */
+expr_ref_vector theory_seq::flatten_int_string_conversions(int size) {
+    DEBUG("fc", "Enter flatten_int_string_conversions\n";);
+    expr_ref_vector add_axiom(m);
+    for (expr *e: m_int_string) {
+        expr *s, *n;
+        if (m_util.str.is_itos(e, n)) { // std::cout << mk_pp(e, m) << "\n";
+            s = e;
+            get_context().set_underapproximation_flag_to_true();
+            expr_ref_vector ands(m);
+
+            // Case 1. n >= 0
+            int mul = 1;
+            unsigned mask = 0;
+            expr_ref_vector valid(m), sum(m);
+            SASSERT(size <= 10);
+            for (int i=size-1; i>=0; i--) {
+                mask <<= 1; mask |= 1;
+
+                unsigned mask_copy = mask;
+                ands.reset();
+                for (int j=size-1; j>=0; j--) {
+                    ands.push_back(m_autil.mk_eq(mk_FA_self_loop_counter(s, j), m_autil.mk_int(mask_copy & 1)));
+                    if (mask_copy & 1)
+                        ands.push_back(m.mk_and(m_autil.mk_ge(mk_FA_self_loop_char(s, j), m_autil.mk_int('0')), m_autil.mk_le(mk_FA_self_loop_char(s, j), m_autil.mk_int('9'))));
+                    mask_copy >>= 1;
+                }
+                sum.push_back(m_autil.mk_mul(m_autil.mk_int(mul), m_autil.mk_sub(mk_FA_self_loop_char(s, i), m_autil.mk_int('0'))));
+                valid.push_back(m.mk_and(m.mk_and(ands), m_autil.mk_eq(n, m_autil.mk_add(sum))));
+
+                mul *= 10;
+            }
+            expr_ref case1(m.mk_and(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(s, size), m.mk_or(valid)), m);
+
+            // Case 2. n <= -1
+            expr_ref case2(m.mk_and(m_autil.mk_le(n, m_autil.mk_int(-1)), m_autil.mk_eq(m_util.str.mk_length(s), m_autil.mk_int(0))), m);
+
+            add_axiom.push_back(m.mk_or(case1, case2));
+        } else if (m_util.str.is_stoi(e, s)) {
+        } else SASSERT(false);
+    }
+    return add_axiom;
+}
+
 expr_ref_vector theory_seq::flatten_equalities(int size) {
     DEBUG("fc","Enter flatten_equalities\n";);
     expr_ref_vector add_axiom(m);
@@ -4373,7 +4423,7 @@ void theory_seq::relevant_eh(app* n) {
     if (m_util.str.is_replace_all(n) ||
         m_util.str.is_replace_re(n) ||
         m_util.str.is_replace_re_all(n) ||
-        m_util.str.is_itos(n) ||
+        // m_util.str.is_itos(n) ||
         m_util.str.is_stoi(n)
         ) {
         add_unhandled_expr(n);
