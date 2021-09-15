@@ -1437,13 +1437,20 @@ final_check_status theory_seq::final_check_eh() {
 //         return FC_CONTINUE;
 //     }
 
-    if (m_ncs.size()>0 || m_rcs.size()>0)
-        return FC_GIVEUP;
+    if (m_ncs.size()>0 || m_rcs.size()>0) {
+        get_context().set_underapproximation_flag_to_true();
+        block_current_assignment();
+        return FC_CONTINUE;
+        // return FC_GIVEUP;
+    }
 
     if (m_unhandled_expr) {
         TRACEFIN("give_up");
         TRACE("seq", tout << "unhandled: " << mk_pp(m_unhandled_expr, m) << "\n";);
-        return FC_GIVEUP;
+        get_context().set_underapproximation_flag_to_true();
+        block_current_assignment();
+        return FC_CONTINUE;
+        // return FC_GIVEUP;
     }
 
     print_formulas("Entering final check:");
