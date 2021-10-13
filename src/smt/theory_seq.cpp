@@ -906,6 +906,7 @@ bool theory_seq::flatten_string_constraints() {
         expr_ref_vector add_axiom(m);
         add_axiom.append(flatten_equalities(segment));
         add_axiom.append(flatten_disequalities(segment));
+        add_axiom.append(check_contains(segment));
         add_axiom.append(nonnegative_variables);
         int_expr_solver ies(m, get_fparams());
         ies.initialize(ctx);
@@ -1673,13 +1674,16 @@ bool theory_seq::check_extensionality() {
 /*
   \brief check negated contains constraints.
  */
-bool theory_seq::check_contains() {
+expr_ref_vector theory_seq::check_contains(int p) {
+    expr_ref_vector add_axiom(m);
     for (unsigned i = 0; !ctx.inconsistent() && i < m_ncs.size(); ++i) {
-        if (solve_nc(i)) {
+        if (true) { //solve_nc(i, p)) {
             m_ncs.erase_and_swap(i--);
         }
+        add_axiom.append(solve_nc(i, p));
     }
-    return m_new_propagation || ctx.inconsistent();
+    return add_axiom;
+    // return m_new_propagation || ctx.inconsistent();
 }
 
 bool theory_seq::check_lts() {
@@ -2287,30 +2291,76 @@ bool theory_seq::get_length(expr* e, expr_ref& len, literal_vector& lits) {
 
 
 
-bool theory_seq::solve_nc(unsigned idx) {
+expr_ref_vector theory_seq::solve_nc(unsigned idx, int p) {
+    expr_ref_vector add_axiom(m);
+
     nc const& n = m_ncs[idx];
     literal len_gt = n.len_gt();
-    expr_ref c(m);
+    // expr_ref c(m);
     expr* a = nullptr, *b = nullptr;
     VERIFY(m_util.str.is_contains(n.contains(), a, b));
-    literal pre, cnt, ctail, emp;
-    lbool is_gt = ctx.get_assignment(len_gt);
-    TRACE("seq", ctx.display_literal_smt2(tout << len_gt << " := " << is_gt << "\n", len_gt) << "\n";);
-    
-    switch (is_gt) {
-    case l_true:
-        add_length_to_eqc(a);
-        add_length_to_eqc(b);
-        return true;
-    case l_undef:
-        ctx.mark_as_relevant(len_gt);
-        m_new_propagation = true;
-        return false;
-    case l_false: 
-        break;
+
+    obj_ref<var, ast_manager> shift(m.mk_var(0, m_autil.mk_int()), m);
+    add_axiom.push_back(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(a, p));
+    add_axiom.push_back(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(b, p));
+    expr_ref_vector OR(m);
+    for (int i=0; i<p; i++) {
+        for (int j=0; j<p; j++) {
+            expr_ref_vector AND(m);
+            AND.push_back(m_autil.mk_ge(mk_FA_self_loop_counter(a, i), m_autil.mk_int(1)));
+            AND.push_back(m_autil.mk_ge(mk_FA_self_loop_counter(b, j), m_autil.mk_int(1)));
+            AND.push_back(m.mk_not(m.mk_eq(mk_FA_self_loop_char(a, i), mk_FA_self_loop_char(b, j))));
+
+            expr_ref_vector sumA(m);
+            sumA.push_back(shift.get());
+            for (int i2=0; i2<i; i2++) /* be careful of < */
+                sumA.push_back(mk_FA_self_loop_counter(a, i2));
+            sumA.push_back(m_autil.mk_int(1));
+            expr_ref_vector sumB(m);
+            for (int j2=0; j2<=j; j2++) /* be careful of <= */
+                sumB.push_back(mk_FA_self_loop_counter(b, j2));
+            AND.push_back(m_autil.mk_le(m_autil.mk_add(sumA), m_autil.mk_add(sumB)));
+
+            sumA.reset();
+            sumA.push_back(shift.get());
+            for (int i2=0; i2<=i; i2++) /* be careful of <= */
+                sumA.push_back(mk_FA_self_loop_counter(a, i2));
+            sumB.reset();
+            for (int j2=0; j2<j; j2++) /* be careful of < */
+                sumB.push_back(mk_FA_self_loop_counter(b, j2));
+            sumB.push_back(m_autil.mk_int(1));
+            AND.push_back(m_autil.mk_ge(m_autil.mk_add(sumA), m_autil.mk_add(sumB)));
+
+            OR.push_back(m.mk_and(AND));
+        }
     }
-    m_ax.unroll_not_contains(n.contains());
-    return true;   
+    add_axiom.push_back(m.mk_eq(n.contains(), m.mk_or(m_autil.mk_le(m_util.str.mk_length(a), m_autil.mk_sub(m_util.str.mk_length(b), m_autil.mk_int(1))),
+                                                   m.mk_forall(1, std::initializer_list<sort*>({m_autil.mk_int()}).begin(), std::initializer_list<symbol>({symbol("shift")}).begin(), m.mk_or(m.mk_not(m.mk_and(m_autil.mk_le(m_autil.mk_int(0), shift.get()),
+                                                                                                                                 m_autil.mk_le(shift.get(), m_autil.mk_sub(m_util.str.mk_length(a), m_util.str.mk_length(b))))),
+                                                                                                               m.mk_or(OR))))));
+    std::cout << mk_pp(m.mk_eq(n.contains(), m.mk_or(m_autil.mk_le(m_util.str.mk_length(a), m_autil.mk_sub(m_util.str.mk_length(b), m_autil.mk_int(1))),
+                                                   m.mk_forall(1, std::initializer_list<sort*>({m_autil.mk_int()}).begin(), std::initializer_list<symbol>({symbol("shift")}).begin(), m.mk_or(m.mk_not(m.mk_and(m_autil.mk_le(m_autil.mk_int(0), shift.get()),
+                                                                                                                                 m_autil.mk_le(shift.get(), m_autil.mk_sub(m_util.str.mk_length(a), m_util.str.mk_length(b))))),
+                                                                                                               m.mk_or(OR))))), m) << "\n";
+    return add_axiom;
+    // literal pre, cnt, ctail, emp;
+    // lbool is_gt = ctx.get_assignment(len_gt);
+    // TRACE("seq", ctx.display_literal_smt2(tout << len_gt << " := " << is_gt << "\n", len_gt) << "\n";);
+    
+    // switch (is_gt) {
+    // case l_true:
+    //     add_length_to_eqc(a);
+    //     add_length_to_eqc(b);
+    //     return true;
+    // case l_undef:
+    //     ctx.mark_as_relevant(len_gt);
+    //     m_new_propagation = true;
+    //     return false;
+    // case l_false: 
+    //     break;
+    // }
+    // m_ax.unroll_not_contains(n.contains());
+    // return true;   
 }
 
 theory_seq::cell* theory_seq::mk_cell(cell* p, expr* e, dependency* d) {

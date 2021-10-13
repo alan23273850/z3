@@ -583,7 +583,7 @@ namespace smt {
         void add_unhandled_expr(expr* e);
 
         bool check_extensionality();
-        bool check_contains();
+        expr_ref_vector check_contains(int p);
         bool check_lts();
         dependency* m_eq_deps { nullptr };
         bool solve_eqs(unsigned start);
@@ -611,7 +611,7 @@ namespace smt {
         expr_ref mk_concat(expr* e1, expr* e2, expr* e3) { return expr_ref(m_util.str.mk_concat(e1, e2, e3), m); }
         bool solve_nqs(unsigned i);
         bool solve_ne(unsigned i);
-        bool solve_nc(unsigned i);
+        expr_ref_vector solve_nc(unsigned idx, int p);
         bool check_ne_literals(unsigned idx, unsigned& num_undef_lits);
         bool propagate_ne2lit(unsigned idx);
         bool propagate_ne2eq(unsigned idx);
