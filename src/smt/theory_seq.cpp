@@ -111,14 +111,14 @@ Outline:
 
 using namespace smt;
 
-class int_expr_solver:expr_solver {
+class independent_solver:expr_solver {
     bool initialized;
     ast_manager& m;
     kernel m_kernel;
     expr_ref_vector erv;
 
 public:
-    int_expr_solver(ast_manager& m, smt_params fp):
+    independent_solver(ast_manager& m, smt_params fp):
         initialized(false), m(m), m_kernel(m, fp), erv(m) {
         fp.m_string_solver = symbol("none");
     }
@@ -908,27 +908,28 @@ bool theory_seq::flatten_string_constraints() {
         add_axiom.append(flatten_disequalities(segment));
         add_axiom.append(check_contains(segment));
         add_axiom.append(nonnegative_variables);
-        int_expr_solver ies(m, get_fparams());
-        ies.initialize(ctx);
-        lbool result = ies.check_sat(add_axiom);
+        independent_solver indp_solver(m, get_fparams());
+        indp_solver.initialize(ctx);
+        lbool result = indp_solver.check_sat(add_axiom);
 
         if (is_debug_enabled("dump_flattening")) // only the last segment will remain
             dump_flattening(segment, add_axiom);
 
         if (result == l_true) {
             if (is_debug_enabled("model"))
-                print_model(ies.get_context(), segment);
+                print_model(indp_solver.get_context(), segment);
             return true;
         }
         else if (result == l_false) {
             continue;
             // std::cout << "UNSAT core:\n";
-            // for (unsigned i=0; i<ies.m_kernel.get_unsat_core_size(); i++) {
-            //     std::cout << mk_pp(ies.m_kernel.get_unsat_core_expr(i), m) << std::endl;
+            // for (unsigned i=0; i<indp_solver.m_kernel.get_unsat_core_size(); i++) {
+            //     std::cout << mk_pp(indp_solver.m_kernel.get_unsat_core_expr(i), m) << std::endl;
             // }
         }
         else {
-            SASSERT(false);
+            continue;
+            // SASSERT(false);
         }
     }
     return false;
@@ -1438,7 +1439,7 @@ final_check_status theory_seq::final_check_eh() {
 //         return FC_CONTINUE;
 //     }
 
-    if (m_ncs.size()>0 || m_rcs.size()>0) {
+    if (/*m_ncs.size()>0 ||*/ m_rcs.size()>0) {
         get_context().set_underapproximation_flag_to_true();
         block_current_assignment();
         return FC_CONTINUE;
@@ -1472,14 +1473,14 @@ final_check_status theory_seq::final_check_eh() {
         return FC_CONTINUE;
     }
 
-    if (is_solved()) {
-        //scoped_enable_trace _se;
-        TRACEFIN("is_solved");
-        TRACE("seq", display(tout););
-        return FC_DONE;
-    }
-    TRACEFIN("give_up");
-    return FC_GIVEUP;
+    // if (is_solved()) {
+    //     //scoped_enable_trace _se;
+    //     TRACEFIN("is_solved");
+    //     TRACE("seq", display(tout););
+    //     return FC_DONE;
+    // }
+    // TRACEFIN("give_up");
+    // return FC_GIVEUP;
 }
 
 
@@ -1677,10 +1678,10 @@ bool theory_seq::check_extensionality() {
 expr_ref_vector theory_seq::check_contains(int p) {
     expr_ref_vector add_axiom(m);
     for (unsigned i = 0; !ctx.inconsistent() && i < m_ncs.size(); ++i) {
+        add_axiom.append(solve_nc(i, p));
         if (true) { //solve_nc(i, p)) {
             m_ncs.erase_and_swap(i--);
         }
-        add_axiom.append(solve_nc(i, p));
     }
     return add_axiom;
     // return m_new_propagation || ctx.inconsistent();
@@ -2300,9 +2301,11 @@ expr_ref_vector theory_seq::solve_nc(unsigned idx, int p) {
     expr* a = nullptr, *b = nullptr;
     VERIFY(m_util.str.is_contains(n.contains(), a, b));
 
-    obj_ref<var, ast_manager> shift(m.mk_var(0, m_autil.mk_int()), m);
-    add_axiom.push_back(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(a, p));
-    add_axiom.push_back(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(b, p));
+    var_ref shift(m.mk_var(0, m_autil.mk_int()), m);
+    if (atom_is_const_char_unicode(a) < 0)
+        add_axiom.push_back(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(a, p));
+    if (atom_is_const_char_unicode(b) < 0)
+        add_axiom.push_back(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(b, p));
     expr_ref_vector OR(m);
     for (int i=0; i<p; i++) {
         for (int j=0; j<p; j++) {
@@ -2312,7 +2315,7 @@ expr_ref_vector theory_seq::solve_nc(unsigned idx, int p) {
             AND.push_back(m.mk_not(m.mk_eq(mk_FA_self_loop_char(a, i), mk_FA_self_loop_char(b, j))));
 
             expr_ref_vector sumA(m);
-            sumA.push_back(shift.get());
+            sumA.push_back(shift);
             for (int i2=0; i2<i; i2++) /* be careful of < */
                 sumA.push_back(mk_FA_self_loop_counter(a, i2));
             sumA.push_back(m_autil.mk_int(1));
@@ -2322,7 +2325,7 @@ expr_ref_vector theory_seq::solve_nc(unsigned idx, int p) {
             AND.push_back(m_autil.mk_le(m_autil.mk_add(sumA), m_autil.mk_add(sumB)));
 
             sumA.reset();
-            sumA.push_back(shift.get());
+            sumA.push_back(shift);
             for (int i2=0; i2<=i; i2++) /* be careful of <= */
                 sumA.push_back(mk_FA_self_loop_counter(a, i2));
             sumB.reset();
@@ -2334,14 +2337,13 @@ expr_ref_vector theory_seq::solve_nc(unsigned idx, int p) {
             OR.push_back(m.mk_and(AND));
         }
     }
-    add_axiom.push_back(m.mk_eq(n.contains(), m.mk_or(m_autil.mk_le(m_util.str.mk_length(a), m_autil.mk_sub(m_util.str.mk_length(b), m_autil.mk_int(1))),
-                                                   m.mk_forall(1, std::initializer_list<sort*>({m_autil.mk_int()}).begin(), std::initializer_list<symbol>({symbol("shift")}).begin(), m.mk_or(m.mk_not(m.mk_and(m_autil.mk_le(m_autil.mk_int(0), shift.get()),
-                                                                                                                                 m_autil.mk_le(shift.get(), m_autil.mk_sub(m_util.str.mk_length(a), m_util.str.mk_length(b))))),
-                                                                                                               m.mk_or(OR))))));
-    std::cout << mk_pp(m.mk_eq(n.contains(), m.mk_or(m_autil.mk_le(m_util.str.mk_length(a), m_autil.mk_sub(m_util.str.mk_length(b), m_autil.mk_int(1))),
-                                                   m.mk_forall(1, std::initializer_list<sort*>({m_autil.mk_int()}).begin(), std::initializer_list<symbol>({symbol("shift")}).begin(), m.mk_or(m.mk_not(m.mk_and(m_autil.mk_le(m_autil.mk_int(0), shift.get()),
-                                                                                                                                 m_autil.mk_le(shift.get(), m_autil.mk_sub(m_util.str.mk_length(a), m_util.str.mk_length(b))))),
-                                                                                                               m.mk_or(OR))))), m) << "\n";
+    expr_ref e(m.mk_eq(m.mk_not(n.contains()), m.mk_or(m_autil.mk_le(m_util.str.mk_length(a), m_autil.mk_sub(m_util.str.mk_length(b), m_autil.mk_int(1))),
+                                                       m.mk_forall(1, std::initializer_list<sort*>({m_autil.mk_int()}).begin(), std::initializer_list<symbol>({symbol("shift")}).begin(),
+                                                                      m.mk_or(m.mk_not(m.mk_and(m_autil.mk_le(m_autil.mk_int(0), shift),
+                                                                                                m_autil.mk_le(shift, m_autil.mk_sub(m_util.str.mk_length(a), m_util.str.mk_length(b))))),
+                                                                              m.mk_or(OR))))), m);
+    add_axiom.push_back(e);
+    DEBUG("fc_verbose", mk_pp(e, m););
     return add_axiom;
     // literal pre, cnt, ctail, emp;
     // lbool is_gt = ctx.get_assignment(len_gt);
