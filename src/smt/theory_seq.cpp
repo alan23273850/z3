@@ -880,7 +880,7 @@ expr_ref_vector theory_seq::sum_of_edges_for_a_single_loop_on_the_PFA_must_be_ma
 
 expr_ref theory_seq::length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(expr* const &atom, int p) {
     // DEBUG("fc_verbose", "length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times:\n";);
-    SASSERT(atom_is_const_char_unicode(atom) < 0);
+    // SASSERT(atom_is_const_char_unicode(atom) < 0);
     expr_ref_vector loops(m);
     for (int i=0; i<p; i++) {
         loops.push_back(mk_FA_self_loop_counter(atom, i));
@@ -1679,9 +1679,9 @@ expr_ref_vector theory_seq::check_contains(int p) {
     expr_ref_vector add_axiom(m);
     for (unsigned i = 0; !ctx.inconsistent() && i < m_ncs.size(); ++i) {
         add_axiom.append(solve_nc(i, p));
-        if (true) { //solve_nc(i, p)) {
-            m_ncs.erase_and_swap(i--);
-        }
+        // if (solve_nc(i, p)) {
+        //     m_ncs.erase_and_swap(i--);
+        // }
     }
     return add_axiom;
     // return m_new_propagation || ctx.inconsistent();
@@ -2306,25 +2306,36 @@ expr_ref_vector theory_seq::solve_nc(unsigned idx, int p) {
     var_ref shift(m.mk_var(0, m_autil.mk_int()), m);
 
     if (chA >= 0 && chB >= 0) {
-        add_axiom.push_back(m.mk_eq(n.contains(), m.mk_eq(m_autil.mk_int(chA), m_autil.mk_int(chB))));
-    } else if (chA < 0 && chB >= 0) {
-        expr_ref_vector OR(m);
-        for (int i=0; i<p; i++)
-            OR.push_back(m.mk_and(m_autil.mk_ge(mk_FA_self_loop_counter(a, i), m_autil.mk_int(1)),
-                                  m.mk_not(m.mk_eq(mk_FA_self_loop_char(a, i), m_autil.mk_int(chB)))));
-        add_axiom.push_back(m.mk_eq(n.contains(), m.mk_or(OR)));
-        add_axiom.push_back(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(a, p));
-    } else if (chA >= 0 && chB < 0) {
-        add_axiom.push_back(m.mk_eq(n.contains(), m.mk_or(m.mk_eq(m_util.str.mk_length(b), m_autil.mk_int(0)),
-                                                          m.mk_eq(a, b))));
-    } else {
+        add_axiom.push_back(m.mk_eq(n.contains(), m_autil.mk_eq(m_autil.mk_int(chA), m_autil.mk_int(chB))));
+    // } else if (chA < 0 && chB >= 0) {
+    //     expr_ref_vector OR(m);
+    //     for (int i=0; i<p; i++)
+    //         OR.push_back(m.mk_and(m_autil.mk_ge(mk_FA_self_loop_counter(a, i), m_autil.mk_int(1)),
+    //                               m.mk_not(m_autil.mk_eq(mk_FA_self_loop_char(a, i), m_autil.mk_int(chB)))));
+    //     add_axiom.push_back(m.mk_eq(n.contains(), m.mk_or(OR)));
+    //     add_axiom.push_back(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(a, p));
+    } else { // TODO: Can a and b still be decomposed into multiple parts with get_concat_units?
+        get_context().set_underapproximation_flag_to_true();
+        expr_ref_vector premise(m);
+        if (chA >= 0) {
+            premise.push_back(m_autil.mk_eq(mk_FA_self_loop_char(a, 0), m_autil.mk_int(chA)));
+            premise.push_back(m_autil.mk_eq(mk_FA_self_loop_counter(a, 0), m_autil.mk_int(1)));
+            for (int i=1; i<p; i++)
+                premise.push_back(m_autil.mk_eq(mk_FA_self_loop_counter(a, i), m_autil.mk_int(0)));
+        }
+        if (chB >= 0) {
+            premise.push_back(m_autil.mk_eq(mk_FA_self_loop_char(b, 0), m_autil.mk_int(chB)));
+            premise.push_back(m_autil.mk_eq(mk_FA_self_loop_counter(b, 0), m_autil.mk_int(1)));
+            for (int i=1; i<p; i++)
+                premise.push_back(m_autil.mk_eq(mk_FA_self_loop_counter(b, i), m_autil.mk_int(0)));
+        }
         expr_ref_vector OR(m);
         for (int i=0; i<p; i++) {
             for (int j=0; j<p; j++) {
                 expr_ref_vector AND(m);
                 AND.push_back(m_autil.mk_ge(mk_FA_self_loop_counter(a, i), m_autil.mk_int(1)));
                 AND.push_back(m_autil.mk_ge(mk_FA_self_loop_counter(b, j), m_autil.mk_int(1)));
-                AND.push_back(m.mk_not(m.mk_eq(mk_FA_self_loop_char(a, i), mk_FA_self_loop_char(b, j))));
+                AND.push_back(m.mk_not(m_autil.mk_eq(mk_FA_self_loop_char(a, i), mk_FA_self_loop_char(b, j))));
 
                 expr_ref_vector sumA(m);
                 sumA.push_back(shift);
@@ -2355,6 +2366,7 @@ expr_ref_vector theory_seq::solve_nc(unsigned idx, int p) {
                                                                                                     m_autil.mk_le(shift, m_autil.mk_sub(m_util.str.mk_length(a), m_util.str.mk_length(b))))),
                                                                                   m.mk_or(OR))))), m);
         DEBUG("fc_verbose", mk_pp(e, m););
+        add_axiom.push_back(m.mk_and(premise));
         add_axiom.push_back(e);
         add_axiom.push_back(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(a, p));
         add_axiom.push_back(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(b, p));
