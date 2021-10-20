@@ -11,7 +11,10 @@ def from_file_to_data_row(file):
     #     "time -p ~/z3-4.8.9 -in", shell=True, capture_output=True, executable='/bin/bash')
     p = subprocess.run(f"time -p timeout 10 ./z3 {file}", shell=True, capture_output=True, executable='/bin/bash')
     t = p.stderr.splitlines()[-3].decode('utf-8'); t = t[t.rfind('real '):]; assert t.startswith('real '); t = t.split(' ')[1]
-    msg = ' '.join(map(lambda x: x.decode('utf-8'), p.stderr.splitlines()[:-3]))
+    try:
+        msg = ' '.join(map(lambda x: x.decode('utf-8'), p.stderr.splitlines()[:-3]))
+    except Exception as e:
+        msg = str(e)
     try:
         stdoutList = list(map(lambda x: x.decode('utf-8'), p.stdout.splitlines()))
         if 'sat' in stdoutList: res = 'sat'
