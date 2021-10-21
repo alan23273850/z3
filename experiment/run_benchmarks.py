@@ -13,6 +13,7 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument("mode", metavar="mode", help="1->small, 2->large")
 parser.add_argument("message", metavar="message", help="usually a commit id")
 parser.add_argument("thread", metavar="thread", help="number of running processes", type=int, default=1)
+parser.add_argument("timeout", metavar="timeout", help="in seconds (default=10)", type=int, default=10)
 args = parser.parse_args()
 
 if args.mode == '1':
@@ -26,14 +27,14 @@ lock = Lock()
 semaphore = Semaphore(args.thread)
 def one_function(file, f):
     semaphore.acquire()
-    result_list = from_file_to_data_row(file)
+    result_list = from_file_to_data_row(file, args.timeout)
     print(','.join(result_list))
     lock.acquire()
     print(','.join(result_list), file=f)
     lock.release()
     semaphore.release()
 
-with open(f"statistics/{args.message}_{args.mode}.csv", 'w', buffering=1) as f:
+with open(f"statistics/{args.message}_{args.mode}_{args.timeout}.csv", 'w', buffering=1) as f:
     # print('filename,z3-time,z3-res,cvc4-time,cvc4-res,trau-time,trau-res,trau-msg,final', file=f)
     print('filename,z3-time,z3-res,message', file=f)
     for dirPath, dirNames, fileNames in data:
@@ -47,4 +48,4 @@ with open(f"statistics/{args.message}_{args.mode}.csv", 'w', buffering=1) as f:
 for i in range(args.thread):
     semaphore.acquire()
 
-os.system(f'python3 summary.py statistics/{args.message}_{args.mode}.csv')
+os.system(f'python3 summary.py statistics/{args.message}_{args.mode}_{args.timeout}.csv')

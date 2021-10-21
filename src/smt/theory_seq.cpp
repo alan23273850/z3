@@ -2300,68 +2300,68 @@ expr_ref_vector theory_seq::solve_nc(unsigned idx, int p) {
     expr* a = nullptr, *b = nullptr;
     VERIFY(m_util.str.is_contains(n.contains(), a, b));
 
-    int chA = atom_is_const_char_unicode(a);
-    int chB = atom_is_const_char_unicode(b);
-    var_ref shift(m.mk_var(0, m_autil.mk_int()), m);
+    zstring s;
+    if (m_util.str.is_string(b, s) && s.length() == 0) {
+        add_axiom.push_back(m.mk_eq(n.contains(), m.mk_true()));
+    } else if (m_util.str.is_string(a, s) && s.length() == 0) {
+        add_axiom.push_back(m.mk_eq(n.contains(), m_autil.mk_eq(m_util.str.mk_length(b), m_autil.mk_int(0))));
+    } else {
+        int chA = atom_is_const_char_unicode(a);
+        int chB = atom_is_const_char_unicode(b);
+        var_ref shift(m.mk_var(0, m_autil.mk_int()), m);
 
-    if (chA >= 0 && chB >= 0) {
-        add_axiom.push_back(m.mk_eq(n.contains(), m_autil.mk_eq(m_autil.mk_int(chA), m_autil.mk_int(chB))));
-    // } else if (chA < 0 && chB >= 0) {
-    //     expr_ref_vector OR(m);
-    //     for (int i=0; i<p; i++)
-    //         OR.push_back(m.mk_and(m_autil.mk_ge(mk_FA_self_loop_counter(a, i), m_autil.mk_int(1)),
-    //                               m.mk_not(m_autil.mk_eq(mk_FA_self_loop_char(a, i), m_autil.mk_int(chB)))));
-    //     add_axiom.push_back(m.mk_eq(n.contains(), m.mk_or(OR)));
-    //     add_axiom.push_back(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(a, p));
-    } else { // TODO: Can a and b still be decomposed into multiple parts with get_concat_units?
-        get_context().set_underapproximation_flag_to_true();
-        expr_ref_vector lhs(m), rhs(m);
+        if (chA >= 0 && chB >= 0) {
+            add_axiom.push_back(m.mk_eq(n.contains(), m_autil.mk_eq(m_autil.mk_int(chA), m_autil.mk_int(chB))));
+        } else {
+            get_context().set_underapproximation_flag_to_true();
 
-        m_util.str.get_concat_units(a, lhs);
-        m_util.str.get_concat_units(b, rhs);
-        from_word_term_to_FA(lhs, p, FA_left);
-        from_word_term_to_FA(rhs, p, FA_right);
+            expr_ref_vector lhs(m), rhs(m);
+            m_util.str.get_concat_units(a, lhs);
+            m_util.str.get_concat_units(b, rhs);
+            from_word_term_to_FA(lhs, p, FA_left);
+            from_word_term_to_FA(rhs, p, FA_right);
 
-        expr_ref_vector OR(m);
-        for (int i=0; i<FA_left.size(); i++) {
-            for (int j=0; j<FA_right.size(); j++) {
-                expr_ref_vector AND(m);
-                AND.push_back(m_autil.mk_ge(FA_left.counters[i].get(), m_autil.mk_int(1)));
-                AND.push_back(m_autil.mk_ge(FA_right.counters[j].get(), m_autil.mk_int(1)));
-                AND.push_back(m.mk_not(m_autil.mk_eq(FA_left.characters[i].get(), FA_right.characters[j].get())));
+            expr_ref_vector disjunction(m);
+            for (int i=0; i<FA_left.size(); i++) {
+                for (int j=0; j<FA_right.size(); j++) {
+                    expr_ref_vector conjunction(m);
+                    conjunction.push_back(m_autil.mk_ge(FA_left.counters[i].get(), m_autil.mk_int(1)));
+                    conjunction.push_back(m_autil.mk_ge(FA_right.counters[j].get(), m_autil.mk_int(1)));
+                    conjunction.push_back(m.mk_not(m_autil.mk_eq(FA_left.characters[i].get(), FA_right.characters[j].get())));
 
-                expr_ref_vector sumA(m);
-                sumA.push_back(shift);
-                for (int i2=0; i2<i; i2++) /* be careful of < */
-                    sumA.push_back(FA_left.counters[i2].get());
-                sumA.push_back(m_autil.mk_int(1));
-                expr_ref_vector sumB(m);
-                for (int j2=0; j2<=j; j2++) /* be careful of <= */
-                    sumB.push_back(FA_right.counters[j2].get());
-                AND.push_back(m_autil.mk_le(m_autil.mk_add(sumA), m_autil.mk_add(sumB)));
+                    expr_ref_vector sumA(m);
+                    sumA.push_back(shift);
+                    for (int i2=0; i2<i; i2++) /* be careful of < */
+                        sumA.push_back(FA_left.counters[i2].get());
+                    sumA.push_back(m_autil.mk_int(1));
+                    expr_ref_vector sumB(m);
+                    for (int j2=0; j2<=j; j2++) /* be careful of <= */
+                        sumB.push_back(FA_right.counters[j2].get());
+                    conjunction.push_back(m_autil.mk_le(m_autil.mk_add(sumA), m_autil.mk_add(sumB)));
 
-                sumA.reset();
-                sumA.push_back(shift);
-                for (int i2=0; i2<=i; i2++) /* be careful of <= */
-                    sumA.push_back(FA_left.counters[i2].get());
-                sumB.reset();
-                for (int j2=0; j2<j; j2++) /* be careful of < */
-                    sumB.push_back(FA_right.counters[j2].get());
-                sumB.push_back(m_autil.mk_int(1));
-                AND.push_back(m_autil.mk_ge(m_autil.mk_add(sumA), m_autil.mk_add(sumB)));
+                    sumA.reset();
+                    sumA.push_back(shift);
+                    for (int i2=0; i2<=i; i2++) /* be careful of <= */
+                        sumA.push_back(FA_left.counters[i2].get());
+                    sumB.reset();
+                    for (int j2=0; j2<j; j2++) /* be careful of < */
+                        sumB.push_back(FA_right.counters[j2].get());
+                    sumB.push_back(m_autil.mk_int(1));
+                    conjunction.push_back(m_autil.mk_ge(m_autil.mk_add(sumA), m_autil.mk_add(sumB)));
 
-                OR.push_back(m.mk_and(AND));
+                    disjunction.push_back(m.mk_and(conjunction));
+                }
             }
+            expr_ref e(m.mk_eq(m.mk_not(n.contains()), m.mk_or(m_autil.mk_le(m_util.str.mk_length(a), m_autil.mk_sub(m_util.str.mk_length(b), m_autil.mk_int(1))),
+                                                            m.mk_forall(1, std::initializer_list<sort*>({m_autil.mk_int()}).begin(), std::initializer_list<symbol>({symbol("shift")}).begin(),
+                                                                            m.mk_or(m.mk_not(m.mk_and(m_autil.mk_le(m_autil.mk_int(0), shift),
+                                                                                                        m_autil.mk_le(shift, m_autil.mk_sub(m_util.str.mk_length(a), m_util.str.mk_length(b))))),
+                                                                                    m.mk_or(disjunction))))), m);
+            DEBUG("fc_verbose", mk_pp(e, m););
+            add_axiom.push_back(e);
+            add_axiom.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(lhs, p));
+            add_axiom.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(rhs, p));
         }
-        expr_ref e(m.mk_eq(m.mk_not(n.contains()), m.mk_or(m_autil.mk_le(m_util.str.mk_length(a), m_autil.mk_sub(m_util.str.mk_length(b), m_autil.mk_int(1))),
-                                                           m.mk_forall(1, std::initializer_list<sort*>({m_autil.mk_int()}).begin(), std::initializer_list<symbol>({symbol("shift")}).begin(),
-                                                                          m.mk_or(m.mk_not(m.mk_and(m_autil.mk_le(m_autil.mk_int(0), shift),
-                                                                                                    m_autil.mk_le(shift, m_autil.mk_sub(m_util.str.mk_length(a), m_util.str.mk_length(b))))),
-                                                                                  m.mk_or(OR))))), m);
-        DEBUG("fc_verbose", mk_pp(e, m););
-        add_axiom.push_back(e);
-        add_axiom.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(lhs, p));
-        add_axiom.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(rhs, p));
     }
     return add_axiom;
     // literal pre, cnt, ctail, emp;
