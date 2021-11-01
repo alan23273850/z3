@@ -1338,26 +1338,21 @@ std::vector<int> theory_seq::get_segment_vector() {
 }
 
 final_check_status theory_seq::final_check_eh() {
-    independent_solver indp_solver(m, get_fparams());
-    // indp_solver.initialize(ctx);
-
-    // kernel m_kernel(m, ctx.get_fparams());
+    smt_params fp = get_fparams();
+    fp.m_string_solver = symbol("none");
+    kernel m_kernel(m, fp);
 
     var_ref shift(m.mk_var(0, m_autil.mk_int()), m);
     sort* arr1[] = {m_autil.mk_int()};
     symbol arr2[] = {symbol("shift")};
-    expr_ref e(m.mk_forall(1, std::initializer_list<sort*>({m_autil.mk_int()}).begin(), std::initializer_list<symbol>({symbol("shift")}).begin(),
-                                                                            m.mk_not(m.mk_and(m_autil.mk_le(m_autil.mk_int(0), shift),
-                                                                                                        m_autil.mk_le(shift, m_autil.mk_int(1))))
-                                                                                    ), m);
-    expr_ref_vector arr3(m);
-    arr3.push_back(e);
-    lbool result = indp_solver.check_sat(arr3);
-    // std::cout << m_kernel.size() << "\n";
-    // ptr_vector<expr> pv;
-    // m_kernel.get_formulas(pv);
-    // for (int i=0; i<pv.size(); i++)
-    //     std::cout << mk_pp(pv[i], m) << "\n";
+    expr_ref e(m.mk_forall(1, arr1, arr2, m.mk_not(m.mk_and(m_autil.mk_le(m_autil.mk_int(0), shift), m_autil.mk_le(shift, m_autil.mk_int(1))))), m);
+    expr* arr3[] = {e.get()};
+    // expr_ref_vector arr3(m); //expr_ref(m.mk_forall(1, arr1, arr2, expr_ref(m_autil.mk_eq(shift, m_autil.mk_int(0)), m).get()), m).get()};
+    // arr3.push_back(e);
+    // lbool result = indp_solver.check_sat(arr3);
+    lbool result = m_kernel.check(1, arr3);
+    for (int i=0; i<m_kernel.size(); i++)
+        std::cout << mk_pp(m_kernel.get_formula(i), m) << "\n";
     std::cout << result << "\n";
     return FC_DONE;
 
