@@ -111,70 +111,70 @@ Outline:
 
 using namespace smt;
 
-class independent_solver:expr_solver {
-    bool initialized;
-    ast_manager& m;
-    kernel m_kernel;
-    expr_ref_vector erv;
+// class independent_solver:expr_solver {
+//     bool initialized;
+//     ast_manager& m;
+//     kernel m_kernel;
+//     expr_ref_vector erv;
 
-public:
-    independent_solver(ast_manager& m, smt_params fp):
-        initialized(false), m(m), m_kernel(m, fp), erv(m) {
-        fp.m_string_solver = symbol("none");
-    }
+// public:
+//     independent_solver(ast_manager& m, smt_params fp):
+//         initialized(false), m(m), m_kernel(m, fp), erv(m) {
+//         fp.m_string_solver = symbol("none");
+//     }
 
-    void assert_expr(expr *e) {
-        erv.push_back(e);
-        // m_kernel.assert_expr(e);
-    }
+//     void assert_expr(expr *e) {
+//         erv.push_back(e);
+//         // m_kernel.assert_expr(e);
+//     }
 
-    void assert_expr(const expr_ref_vector &v) {
-        erv.append(v);
-        // m_kernel.assert_expr(v);
-    }
+//     void assert_expr(const expr_ref_vector &v) {
+//         erv.append(v);
+//         // m_kernel.assert_expr(v);
+//     }
 
-    void initialize(context &ctx) {
-        bool on_screen = false;
+//     void initialize(context &ctx) {
+//         bool on_screen = false;
 
-        if (!initialized) {
-            initialized = true;
-            expr_ref_vector Assigns(m), Literals(m);
-            ctx.get_guessed_literals(Literals);
-            ctx.get_assignments(Assigns);
-            for (unsigned i = 0; i < ctx.get_num_asserted_formulas(); ++i) {
-                if (on_screen) std::cout << "check_sat context from asserted:" << mk_pp(ctx.get_asserted_formula(i), m) << std::endl;
-                assert_expr(ctx.get_asserted_formula(i));
-            }
-            for (auto &e:Assigns) {
-                if (ctx.is_relevant(e)) {
-                    if (on_screen) std::cout << "check_sat context from assign:" << mk_pp(e, m) << std::endl;
-                    assert_expr(e);
-                }
-                if (on_screen) std::cout << "is relevant: " << ctx.is_relevant(e) << " get_assignment: " << ctx.get_assignment(e) << std::endl;
-            }
-            // for (auto & e : Literals) {
-            //     if (ctx.is_relevant(e)) {
-            //         if (on_screen) std::cout << "check_sat context from guess:" << mk_pp(e, m) << std::endl;
-            //         assert_expr(e);
-            //     }
-            //     if (on_screen) std::cout << "is relevant: " << ctx.is_relevant(e) << " get_assignment: "<< ctx.get_assignment(e) << std::endl;
-            // }
-        }
-    }
-    lbool check_sat(expr *v) {
-        SASSERT(false);
-        lbool r = m_kernel.check(1, &v);
-        return r;
-    }
-    lbool check_sat(const expr_ref_vector &v) {
-        erv.append(v);
-        lbool r = m_kernel.check(erv);
-        return r;
-    }
-    context& get_context() {
-        return m_kernel.get_context();
-    }
-};
+//         if (!initialized) {
+//             initialized = true;
+//             expr_ref_vector Assigns(m), Literals(m);
+//             ctx.get_guessed_literals(Literals);
+//             ctx.get_assignments(Assigns);
+//             for (unsigned i = 0; i < ctx.get_num_asserted_formulas(); ++i) {
+//                 if (on_screen) std::cout << "check_sat context from asserted:" << mk_pp(ctx.get_asserted_formula(i), m) << std::endl;
+//                 assert_expr(ctx.get_asserted_formula(i));
+//             }
+//             for (auto &e:Assigns) {
+//                 if (ctx.is_relevant(e)) {
+//                     if (on_screen) std::cout << "check_sat context from assign:" << mk_pp(e, m) << std::endl;
+//                     assert_expr(e);
+//                 }
+//                 if (on_screen) std::cout << "is relevant: " << ctx.is_relevant(e) << " get_assignment: " << ctx.get_assignment(e) << std::endl;
+//             }
+//             // for (auto & e : Literals) {
+//             //     if (ctx.is_relevant(e)) {
+//             //         if (on_screen) std::cout << "check_sat context from guess:" << mk_pp(e, m) << std::endl;
+//             //         assert_expr(e);
+//             //     }
+//             //     if (on_screen) std::cout << "is relevant: " << ctx.is_relevant(e) << " get_assignment: "<< ctx.get_assignment(e) << std::endl;
+//             // }
+//         }
+//     }
+//     lbool check_sat(expr *v) {
+//         SASSERT(false);
+//         lbool r = m_kernel.check(1, &v);
+//         return r;
+//     }
+//     lbool check_sat(const expr_ref_vector &v) {
+//         erv.append(v);
+//         lbool r = m_kernel.check(erv);
+//         return r;
+//     }
+//     context& get_context() {
+//         return m_kernel.get_context();
+//     }
+// };
 
 void theory_seq::solution_map::update(expr* e, expr* r, dependency* d) {
     if (e == r) {
@@ -908,16 +908,28 @@ bool theory_seq::flatten_string_constraints() {
         add_axiom.append(flatten_disequalities(segment));
         add_axiom.append(check_contains(segment));
         add_axiom.append(nonnegative_variables);
-        independent_solver indp_solver(m, get_fparams());
-        indp_solver.initialize(ctx);
-        lbool result = indp_solver.check_sat(add_axiom);
+
+        smt_params fp = get_fparams();
+        fp.m_string_solver = symbol("none");
+        kernel independent_solver(m, fp);
+        expr_ref_vector Assigns(m);
+        ctx.get_assignments(Assigns);
+        for (unsigned i = 0; i < ctx.get_num_asserted_formulas(); ++i) {
+            add_axiom.push_back(ctx.get_asserted_formula(i));
+        }
+        for (auto &e:Assigns) {
+            if (ctx.is_relevant(e)) {
+                add_axiom.push_back(e);
+            }
+        }
+        lbool result = independent_solver.check(add_axiom);
 
         if (is_debug_enabled("dump_flattening")) // only the last segment will remain
             dump_flattening(segment, add_axiom);
 
         if (result == l_true) {
-            if (is_debug_enabled("model"))
-                print_model(indp_solver.get_context(), segment);
+            // if (is_debug_enabled("model"))
+            //     print_model(indp_solver.get_context(), segment);
             return true;
         }
         else if (result == l_false) {
@@ -2295,7 +2307,7 @@ expr_ref_vector theory_seq::solve_nc(unsigned idx, int p) {
     expr_ref_vector add_axiom(m);
 
     nc const& n = m_ncs[idx];
-    literal len_gt = n.len_gt();
+    // literal len_gt = n.len_gt();
     // expr_ref c(m);
     expr* a = nullptr, *b = nullptr;
     VERIFY(m_util.str.is_contains(n.contains(), a, b));
@@ -2322,8 +2334,8 @@ expr_ref_vector theory_seq::solve_nc(unsigned idx, int p) {
             from_word_term_to_FA(rhs, p, FA_right);
 
             expr_ref_vector disjunction(m);
-            for (int i=0; i<FA_left.size(); i++) {
-                for (int j=0; j<FA_right.size(); j++) {
+            for (int i=0; i<(int)FA_left.size(); i++) {
+                for (int j=0; j<(int)FA_right.size(); j++) {
                     expr_ref_vector conjunction(m);
                     conjunction.push_back(m_autil.mk_ge(FA_left.counters[i].get(), m_autil.mk_int(1)));
                     conjunction.push_back(m_autil.mk_ge(FA_right.counters[j].get(), m_autil.mk_int(1)));
