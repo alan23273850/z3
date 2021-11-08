@@ -1509,11 +1509,11 @@ final_check_status theory_seq::final_check_eh() {
 //         TRACEFIN("zero_length");
 //         return FC_CONTINUE;
 //     }
-    if (get_fparams().m_split_w_len && len_based_split()) {
-        ++m_stats.m_branch_variable;
-        TRACEFIN("split_based_on_length");
-        return FC_CONTINUE;
-    }
+    // if (get_fparams().m_split_w_len && len_based_split()) {
+    //     ++m_stats.m_branch_variable;
+    //     TRACEFIN("split_based_on_length");
+    //     return FC_CONTINUE;
+    // }
 //     if (fixed_length()) {
 //         ++m_stats.m_fixed_length;
 //         TRACEFIN("fixed_length");
@@ -1541,10 +1541,10 @@ final_check_status theory_seq::final_check_eh() {
 //     }
 
 
-    if (branch_variable_mb()) {
-        TRACE("seq", tout << "branch_variable_mb\n";);
-        return FC_CONTINUE;
-    }
+    // if (branch_variable_mb()) {
+    //     TRACE("seq", tout << "branch_variable_mb\n";);
+    //     return FC_CONTINUE;
+    // }
 //    if (branch_variable_eq()) {
 //        TRACE("seq", tout << "branch_variable_eq\n";);
 //        return FC_CONTINUE;
