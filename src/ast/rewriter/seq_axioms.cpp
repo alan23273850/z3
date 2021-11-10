@@ -35,6 +35,12 @@ namespace seq {
         m_trail(m)
     {}
         
+    expr_ref axioms::mk_add(expr* x, expr* y) {
+        expr_ref result(a.mk_add(x, y), m);
+        m_rewrite(result);
+        return result;
+    }
+    
     expr_ref axioms::mk_sub(expr* x, expr* y) {
         expr_ref result(a.mk_sub(x, y), m);
         m_rewrite(result);
@@ -252,6 +258,15 @@ namespace seq {
         add_clause(~ls_le_0, le_is_0);
         add_clause(~l_le_0,  le_is_0);
         add_clause(~le_is_0, ~i_ge_0, ls_le_i, ls_le_0, l_le_0);
+
+        /************************* heuristics *************************/
+        add_clause(expr_ref(m.mk_not(m.mk_and(mk_ge(i, 0), mk_ge_e(mk_len(s), mk_add(i, l)))), m),
+                   mk_ge_e(mk_len(e), l));
+        add_clause(expr_ref(m.mk_not(m.mk_and(mk_ge(i, 0), mk_le_e(mk_len(s), mk_add(i, l)))), m),
+                   mk_ge_e(mk_len(e), mk_sub(mk_len(s), i)));
+        add_clause(expr_ref(m.mk_not(mk_ge(l, 0)), m), mk_le_e(mk_len(e), l));
+        add_clause(expr_ref(m.mk_not(mk_ge(mk_len(s), i)), m), mk_le_e(mk_len(e), mk_sub(mk_len(s), i)));
+        add_clause(mk_le_e(mk_len(e), mk_len(s)));
     }
 
     void axioms::tail_axiom(expr* e, expr* s) {    
@@ -502,6 +517,11 @@ namespace seq {
             // offset < 0 => -1 = i        
             add_clause(offset_ge_0, i_eq_m1);
         }
+
+        /************************* heuristics *************************/
+        add_clause(mk_ge_e(i, a.mk_int(-1)));
+        add_clause(expr_ref(m.mk_not(mk_ge_e(mk_len(t), mk_len(s))), m), mk_le_e(i, mk_sub(mk_len(t), mk_len(s))));
+        add_clause(mk_le_e(i, mk_len(t)));
     }
 
     /**
@@ -577,6 +597,14 @@ namespace seq {
         add_clause(~cnt, u_emp, s_emp, mk_seq_eq(u, xsy));
         add_clause(~cnt, u_emp, s_emp, mk_seq_eq(r, xty));
         tightest_prefix(s, x);
+
+        /************************* heuristics *************************/
+        add_clause(expr_ref(m.mk_not(m.mk_or(mk_ge_e(mk_len(t), mk_len(s)), mk_ge_e(mk_len(t), mk_len(u)))), m),
+                   mk_ge_e(mk_len(r), mk_len(u)));
+        add_clause(mk_ge_e(mk_len(r), mk_sub(mk_len(u), mk_len(s))));
+        add_clause(expr_ref(m.mk_not(mk_ge_e(mk_len(s), mk_len(t))), m),
+                   mk_le_e(mk_len(r), mk_len(u)));
+        add_clause(mk_le_e(mk_len(r), mk_add(mk_len(u), mk_len(t))));
     }
 
     /*

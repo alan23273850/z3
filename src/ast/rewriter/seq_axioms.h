@@ -40,6 +40,7 @@ namespace seq {
         std::function<void(void)>  m_ensure_digits;
 
         expr_ref mk_len(expr* s);
+        expr_ref mk_add(expr* x, expr* y);
         expr_ref mk_sub(expr* x, expr* y);
         expr_ref mk_concat(expr* e1, expr* e2, expr* e3) { return expr_ref(seq.str.mk_concat(e1, e2, e3), m); }
         expr_ref mk_concat(expr* e1, expr* e2) { return expr_ref(seq.str.mk_concat(e1, e2), m); }
