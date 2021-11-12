@@ -422,6 +422,11 @@ namespace smt {
         bool has_len_offset(expr_ref_vector const& ls, expr_ref_vector const& rs, int & diff);
         
         // final check 
+        void print_terms(const expr_ref_vector& terms);
+        void print_eq_from_enode(const expr_ref_vector& terms);
+        void print_formulas(zstring msg);
+        void print_term(const arith_value &local_arith_value, const expr_ref_vector &term, int size);
+
         bool simplify_and_solve_eqs();   // solve unitary equalities
         bool reduce_length_eq();
         bool branch_unit_variable();     // branch on XYZ = abcdef

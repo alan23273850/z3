@@ -110,6 +110,77 @@ Outline:
 
 using namespace smt;
 
+#define DEBUG(TYPE, STREAM) { if (is_debug_enabled(TYPE)) { std::cout << STREAM } }
+
+void theory_seq::print_terms(const expr_ref_vector& terms){
+    bool first =true;
+    for(auto const& term :terms) {
+        if(first) first = false; else DEBUG("input",".";);
+        DEBUG("input",mk_pp(term,m););
+    }
+}
+void theory_seq::print_eq_from_enode(const expr_ref_vector& terms){
+    for(auto const& term :terms) {
+        if(ensure_enode(term)->get_root()!=ensure_enode(term)) {
+            expr_ref_vector terms(m);
+            m_util.str.get_concat_units(ensure_enode(term)->get_root()->get_expr(), terms);
+            print_terms(terms);
+            DEBUG("input"," = ";);
+            terms.reset();
+            m_util.str.get_concat_units(term, terms);
+            print_terms(terms);
+            DEBUG("input","\n";);
+        }
+    }
+}
+void theory_seq::print_formulas(zstring msg){
+    DEBUG("input",msg <<" \n";);
+    if(!m_eqs.empty() || !m_rep.empty()) DEBUG("input","Word Equations:\n";);
+    for (auto const& eq:m_eqs) {
+        print_terms(eq.ls);
+        DEBUG("input"," = ";);
+        print_terms(eq.rs);
+        DEBUG("input","\n";);
+        print_eq_from_enode(eq.ls);
+        print_eq_from_enode(eq.rs);
+    }
+    for (auto const& eq:m_rep) {
+        if(eq.v && eq.v->get_sort()==m_util.mk_string_sort()) {
+            expr_ref_vector terms(m);
+            m_util.str.get_concat_units(eq.e, terms);
+            print_terms(terms);
+            DEBUG("input"," = ";);
+            terms.reset();
+            m_util.str.get_concat_units(eq.v, terms);
+            print_terms(terms);
+            DEBUG("input","\n";);
+
+            terms.reset();
+            m_util.str.get_concat_units(eq.e, terms);
+            print_eq_from_enode(terms);
+            terms.reset();
+            m_util.str.get_concat_units(eq.v, terms);
+            print_eq_from_enode(terms);
+        }
+    }
+    if(!m_nqs.empty()) DEBUG("input","Word Disequalities:\n";);
+    for (auto const& dis:m_nqs) {
+        expr_ref_vector terms(m);
+        m_util.str.get_concat_units(dis.l(), terms);
+        print_terms(terms);
+        DEBUG("input"," != ";);
+        terms.reset();
+        m_util.str.get_concat_units(dis.r(), terms);
+        print_terms(terms);
+        DEBUG("input","\n";);
+    }
+    if(!m_ncs.empty()) DEBUG("input","Not Contains:\n";);
+    for (auto const & nc:m_ncs){
+        DEBUG("input","not " << mk_bounded_pp(nc.contains(), m, 2)<<"\n";);
+    }
+    DEBUG("input","\n";);
+}
+
 void theory_seq::solution_map::update(expr* e, expr* r, dependency* d) {
     if (e == r) {
         return;
@@ -318,6 +389,55 @@ struct scoped_enable_trace {
 };
 
 final_check_status theory_seq::final_check_eh() {
+    print_formulas("Entering final check:");
+
+    // Method 1
+    add_axiom(mk_literal(m.mk_false()));
+
+    // Method 2
+    // DEBUG("block",__LINE__ << "[Refinement]\nformulas:\n";)
+    // literal_vector lits;
+    // for (const auto& eq : m_rep) {
+    //     if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
+    //         eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
+    //         expr *const e = m.mk_eq(eq.v, eq.e);
+    //         literal l = mk_literal(m.mk_not(e));
+    //         lits.push_back(l);
+    //         DEBUG("block", "[m_rep] "<<l<<"("<<mk_pp(m.mk_not(e),m)<<") \n";);
+    //     }
+    // }
+    // for (const auto& we : m_eqs) {
+    //     expr *const e = m.mk_eq(mk_concat(we.ls), mk_concat(we.rs));
+    //     literal l = mk_literal(m.mk_not(e));
+    //     lits.push_back(l);
+    //     DEBUG("block", "[m_eqs] "<<l<<"("<<mk_pp(m.mk_not(e),m)<<") \n";);
+    // }
+    // for (const auto& wi : m_nqs) {
+    //     expr *const e = m.mk_not(m.mk_eq(wi.l(), wi.r()));
+    //     literal l = mk_literal(m.mk_not(e));
+    //     lits.push_back(l);
+    //     DEBUG("block", "[m_nqs] "<<l<<"("<<mk_pp(m.mk_not(e),m)<<") \n";);
+    // }
+    // for (const auto& nc : m_ncs) {
+    //     expr *const e = m.mk_not(nc.contains());
+    //     literal l = mk_literal(m.mk_not(e));
+    //     lits.push_back(l);
+    //     DEBUG("block", "[m_ncs] "<<l<<"("<<mk_pp(m.mk_not(e),m)<<") \n";);
+    // }
+    // DEBUG("block", "block ";);
+    // for(auto& lit:lits){
+    //     DEBUG("block", " "<<lit<<"("<<lit<<")";);
+    // }
+    // DEBUG("block", "\n";);
+
+    // if (!lits.empty()) {
+    //     add_axiom(lits);
+    //     DEBUG("block",mk_pp(refinement,m) << '\n';)
+    // }
+    // DEBUG("block",__LINE__ << " leave " << __FUNCTION__ << std::endl;)
+
+    return FC_CONTINUE;
+
     if (!m_has_seq) {
         return FC_DONE;
     }
