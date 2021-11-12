@@ -391,67 +391,49 @@ struct scoped_enable_trace {
 
 void theory_seq::block_current_assignment() {
     DEBUG("block",__LINE__ << " enter " << __FUNCTION__ << std::endl;)
-    add_axiom(mk_literal(m.mk_false()));
-//    return;
-//
-//    literal_vector lits;
-//
-//    expr *refinement = nullptr;
-//    DEBUG("block",__LINE__ << "[Refinement]\nformulas:\n";)
-//
-//    for (const auto& eq : m_rep) {
-//        if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
-//            eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
-//            expr *const e = m.mk_eq(eq.v, eq.e);
-//            literal l = mk_literal(m.mk_not(e));
-//            lits.push_back( l);
-//            DEBUG("block", "[m_rep] "<<l<<"("<<mk_pp(m.mk_not(e),m)<<") \n";);
-//            refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
-//        }
-//    }
-//    for (const auto& we : m_eqs) {
-//        expr *const e = m.mk_eq(mk_concat(we.ls), mk_concat(we.rs));
-//        literal l = mk_literal(m.mk_not(e));
-//        lits.push_back( l);
-//        DEBUG("block", "[m_eqs] "<<l<<"("<<mk_pp(m.mk_not(e),m)<<") \n";);
-//        refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
-//    }
-//    for (const auto& wi : m_nqs) {
-//        expr *const e = m.mk_not(m.mk_eq(wi.l(), wi.r()));
-//        literal l = mk_literal(m.mk_not(e));
-//        lits.push_back( l);
-//        DEBUG("block", "[m_nqs] "<<l<<"("<<mk_pp(m.mk_not(e),m)<<") \n";);
-//        refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
-//    }
-//    for (const auto& rc : m_rcs) {
-//        expr *const e = m_util.re.mk_in_re(rc.term(),rc.re());
-//        literal l = mk_literal(m.mk_not(e));
-//        lits.push_back( l);
-//        DEBUG("block", "[m_rcs] "<<l<<"("<<mk_pp(m.mk_not(e),m)<<") \n";);
-//        refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
-//    }
-//    for (const auto& nc : m_ncs) {
-//        expr *const e = m.mk_not(nc.contains());
-//        literal l = mk_literal(m.mk_not(e));
-//        lits.push_back( l);
-//        DEBUG("block", "[m_ncs] "<<l<<"("<<mk_pp(m.mk_not(e),m)<<") \n";);
-//
-//        refinement = refinement == nullptr ? e : m.mk_and(refinement, e);
-//    }
-//
-//    DEBUG("block", "block ";);
-//    for(auto& lit:lits){
-//        DEBUG("block", " "<<lit<<"("<<lit<<")";);
-//    }
-//    DEBUG("block", "\n";);
-//
-//    if (refinement != nullptr) {
-//        //add_axiom(mk_literal(m.mk_not(refinement)));
-//        add_axiom(lits);
-//        DEBUG("block",mk_pp(refinement,m) << '\n';)
-//
-//    }
-    DEBUG("block",__LINE__ << " leave " << __FUNCTION__ << std::endl;)
+    // add_axiom(mk_literal(m.mk_false()));
+    // return;
+
+    literal_vector lits;
+    DEBUG("block", __LINE__ << "[Refinement]\nformulas:\n";)
+    for (const auto& eq : m_rep) {
+        if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
+            eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
+            expr *const e = m.mk_eq(eq.v, eq.e);
+            literal l = mk_literal(m.mk_not(e));
+            lits.push_back(l);
+            DEBUG("block", "[m_rep] " << l << "(" << mk_pp(m.mk_not(e),m) << ") \n";);
+        }
+    }
+    for (const auto& we : m_eqs) {
+        expr *const e = m.mk_eq(mk_concat(we.ls), mk_concat(we.rs));
+        literal l = mk_literal(m.mk_not(e));
+        lits.push_back(l);
+        DEBUG("block", "[m_eqs] " << l << "(" << mk_pp(m.mk_not(e),m) << ") \n";);
+    }
+    for (const auto& wi : m_nqs) {
+        expr *const e = m.mk_not(m.mk_eq(wi.l(), wi.r()));
+        literal l = mk_literal(m.mk_not(e));
+        lits.push_back(l);
+        DEBUG("block", "[m_nqs] " << l << "(" << mk_pp(m.mk_not(e),m) << ") \n";);
+    }
+    for (const auto& rc : m_rcs) {
+        expr *const e = m_util.re.mk_in_re(rc.term(),rc.re());
+        literal l = mk_literal(m.mk_not(e));
+        lits.push_back(l);
+        DEBUG("block", "[m_rcs] " << l << "(" << mk_pp(m.mk_not(e),m) << ") \n";);
+    }
+    for (const auto& nc : m_ncs) {
+        expr *const e = m.mk_not(nc.contains());
+        literal l = mk_literal(m.mk_not(e));
+        lits.push_back(l);
+        DEBUG("block", "[m_ncs] " << l << "(" << mk_pp(m.mk_not(e),m) << ") \n";);
+    }
+
+    if (!lits.empty()) {
+        add_axiom(lits);
+    }
+    DEBUG("block", __LINE__ << " leave " << __FUNCTION__ << std::endl;)
 }
 
 void theory_seq::print_terms(const expr_ref_vector& terms){
@@ -593,7 +575,7 @@ expr_ref_vector theory_seq::flatten_disequalities(int size) {
     // bool change = false;
     expr_ref_vector add_axiom(m);
     for (unsigned i=0; i<m_nqs.size(); i++) {
-        get_context().set_underapproximation_flag_to_true();
+        // get_context().set_underapproximation_flag_to_true();
         ne &nq = m_nqs.ref(i); // display_disequation(std::cout, nq);
         const auto id_pair = std::make_pair(nq.l().get()->get_id(), nq.r().get()->get_id());
         // const auto id_pair = std::make_pair(std::min(nq.l().get()->get_id(), nq.r().get()->get_id()), std::max(nq.l().get()->get_id(), nq.r().get()->get_id()));
@@ -979,7 +961,7 @@ expr_ref_vector theory_seq::flatten_int_string_conversions(int size) {
                 }
             }
             else {
-                get_context().set_underapproximation_flag_to_true();
+                // get_context().set_underapproximation_flag_to_true();
                 expr_ref_vector expv(m);
 
                 // Case 1. empty string ==> -1
@@ -1024,7 +1006,7 @@ expr_ref_vector theory_seq::flatten_int_string_conversions(int size) {
             }
         } else if (m_util.str.is_itos(e, n)) { // std::cout << mk_pp(e, m) << "\n";
             s = e;
-            get_context().set_underapproximation_flag_to_true();
+            // get_context().set_underapproximation_flag_to_true();
             expr_ref_vector expv(m);
 
             // Case 1. n >= 0
@@ -1069,7 +1051,7 @@ expr_ref_vector theory_seq::flatten_equalities(int size) {
     for (auto const& eq: m_rep) {
         if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
             eq.e && eq.e->get_sort()==m_util.mk_string_sort()) { // std::cout << mk_pp(eq.v, m) << " = " << mk_pp(eq.e, m) << "\n";
-            get_context().set_underapproximation_flag_to_true();
+            // get_context().set_underapproximation_flag_to_true();
             std::vector<std::tuple<formula_type, std::pair<int, int>, expr_ref_vector, expr_ref_vector>> eqs;
 
             expr_ref_vector lhs(m);
@@ -1131,7 +1113,7 @@ expr_ref_vector theory_seq::flatten_equalities(int size) {
         }
     }
     for (const auto &eq: m_eqs) { // display_equation(std::cout, eq);
-        get_context().set_underapproximation_flag_to_true();
+        // get_context().set_underapproximation_flag_to_true();
         // if(!m_flattened_eqids.contains(eq.id())) {
         //     m_flattened_eqids.push_back(eq.id());
         std::vector<std::tuple<formula_type, unsigned, expr_ref_vector, expr_ref_vector>> eqs;
@@ -2444,7 +2426,7 @@ expr_ref_vector theory_seq::solve_nc(unsigned idx, int p) {
         if (chA >= 0 && chB >= 0) {
             add_axiom.push_back(m.mk_eq(n.contains(), m_autil.mk_eq(m_autil.mk_int(chA), m_autil.mk_int(chB))));
         } else {
-            get_context().set_underapproximation_flag_to_true();
+            // get_context().set_underapproximation_flag_to_true();
 
             expr_ref_vector lhs(m), rhs(m);
             m_util.str.get_concat_units(a, lhs);
