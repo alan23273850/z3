@@ -392,49 +392,48 @@ final_check_status theory_seq::final_check_eh() {
     print_formulas("Entering final check:");
 
     // Method 1
-    add_axiom(mk_literal(m.mk_false()));
+    // add_axiom(mk_literal(m.mk_false()));
 
     // Method 2
-    // DEBUG("block",__LINE__ << "[Refinement]\nformulas:\n";)
-    // literal_vector lits;
-    // for (const auto& eq : m_rep) {
-    //     if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
-    //         eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
-    //         expr *const e = m.mk_eq(eq.v, eq.e);
-    //         literal l = mk_literal(m.mk_not(e));
-    //         lits.push_back(l);
-    //         DEBUG("block", "[m_rep] "<<l<<"("<<mk_pp(m.mk_not(e),m)<<") \n";);
-    //     }
-    // }
-    // for (const auto& we : m_eqs) {
-    //     expr *const e = m.mk_eq(mk_concat(we.ls), mk_concat(we.rs));
-    //     literal l = mk_literal(m.mk_not(e));
-    //     lits.push_back(l);
-    //     DEBUG("block", "[m_eqs] "<<l<<"("<<mk_pp(m.mk_not(e),m)<<") \n";);
-    // }
-    // for (const auto& wi : m_nqs) {
-    //     expr *const e = m.mk_not(m.mk_eq(wi.l(), wi.r()));
-    //     literal l = mk_literal(m.mk_not(e));
-    //     lits.push_back(l);
-    //     DEBUG("block", "[m_nqs] "<<l<<"("<<mk_pp(m.mk_not(e),m)<<") \n";);
-    // }
-    // for (const auto& nc : m_ncs) {
-    //     expr *const e = m.mk_not(nc.contains());
-    //     literal l = mk_literal(m.mk_not(e));
-    //     lits.push_back(l);
-    //     DEBUG("block", "[m_ncs] "<<l<<"("<<mk_pp(m.mk_not(e),m)<<") \n";);
-    // }
-    // DEBUG("block", "block ";);
-    // for(auto& lit:lits){
-    //     DEBUG("block", " "<<lit<<"("<<lit<<")";);
-    // }
-    // DEBUG("block", "\n";);
+    DEBUG("block",__LINE__ << "[Refinement]\nformulas:\n";)
+    literal_vector lits;
+    for (const auto& eq : m_rep) {
+        if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
+            eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
+            expr *const e = m.mk_eq(eq.v, eq.e);
+            literal l = mk_literal(m.mk_not(e));
+            lits.push_back(l);
+            DEBUG("block", "[m_rep] "<<l<<"("<<mk_pp(m.mk_not(e),m)<<") \n";);
+        }
+    }
+    for (const auto& we : m_eqs) {
+        expr *const e = m.mk_eq(mk_concat(we.ls), mk_concat(we.rs));
+        literal l = mk_literal(m.mk_not(e));
+        lits.push_back(l);
+        DEBUG("block", "[m_eqs] "<<l<<"("<<mk_pp(m.mk_not(e),m)<<") \n";);
+    }
+    for (const auto& wi : m_nqs) {
+        expr *const e = m.mk_not(m.mk_eq(wi.l(), wi.r()));
+        literal l = mk_literal(m.mk_not(e));
+        lits.push_back(l);
+        DEBUG("block", "[m_nqs] "<<l<<"("<<mk_pp(m.mk_not(e),m)<<") \n";);
+    }
+    for (const auto& nc : m_ncs) {
+        expr *const e = m.mk_not(nc.contains());
+        literal l = mk_literal(m.mk_not(e));
+        lits.push_back(l);
+        DEBUG("block", "[m_ncs] "<<l<<"("<<mk_pp(m.mk_not(e),m)<<") \n";);
+    }
+    DEBUG("block", "block ";);
+    for(auto& lit:lits){
+        DEBUG("block", " "<<lit<<"("<<lit<<")";);
+    }
+    DEBUG("block", "\n";);
 
-    // if (!lits.empty()) {
-    //     add_axiom(lits);
-    //     DEBUG("block",mk_pp(refinement,m) << '\n';)
-    // }
-    // DEBUG("block",__LINE__ << " leave " << __FUNCTION__ << std::endl;)
+    if (!lits.empty()) {
+        add_axiom(lits);
+    }
+    DEBUG("block",__LINE__ << " leave " << __FUNCTION__ << std::endl;)
 
     return FC_CONTINUE;
 
