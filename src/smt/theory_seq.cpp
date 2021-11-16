@@ -400,34 +400,34 @@ void theory_seq::block_current_assignment() {
         if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
             eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
             expr *const e = m.mk_eq(eq.v, eq.e);
-            literal l = mk_literal(m.mk_not(e));
+            literal l = ~mk_literal(e);
             lits.push_back(l);
-            DEBUG("block", "[m_rep] " << l << "(" << mk_pp(m.mk_not(e),m) << ") \n";);
+            DEBUG("block", "[m_rep] " << l << "(" << mk_pp(expr_ref(m.mk_not(e), m).get(), m) << ") \n";);
         }
     }
     for (const auto& we : m_eqs) {
         expr *const e = m.mk_eq(mk_concat(we.ls), mk_concat(we.rs));
-        literal l = mk_literal(m.mk_not(e));
+        literal l = ~mk_literal(e);
         lits.push_back(l);
-        DEBUG("block", "[m_eqs] " << l << "(" << mk_pp(m.mk_not(e),m) << ") \n";);
+        DEBUG("block", "[m_eqs] " << l << "(" << mk_pp(expr_ref(m.mk_not(e), m).get(), m) << ") \n";);
     }
     for (const auto& wi : m_nqs) {
         expr *const e = m.mk_not(m.mk_eq(wi.l(), wi.r()));
-        literal l = mk_literal(m.mk_not(e));
+        literal l = ~mk_literal(e);
         lits.push_back(l);
-        DEBUG("block", "[m_nqs] " << l << "(" << mk_pp(m.mk_not(e),m) << ") \n";);
+        DEBUG("block", "[m_nqs] " << l << "(" << mk_pp(expr_ref(m.mk_not(e), m).get(), m) << ") \n";);
     }
     for (const auto& rc : m_rcs) {
         expr *const e = m_util.re.mk_in_re(rc.term(),rc.re());
-        literal l = mk_literal(m.mk_not(e));
+        literal l = ~mk_literal(e);
         lits.push_back(l);
-        DEBUG("block", "[m_rcs] " << l << "(" << mk_pp(m.mk_not(e),m) << ") \n";);
+        DEBUG("block", "[m_rcs] " << l << "(" << mk_pp(expr_ref(m.mk_not(e), m).get(), m) << ") \n";);
     }
     for (const auto& nc : m_ncs) {
         expr *const e = m.mk_not(nc.contains());
-        literal l = mk_literal(m.mk_not(e));
+        literal l = ~mk_literal(e);
         lits.push_back(l);
-        DEBUG("block", "[m_ncs] " << l << "(" << mk_pp(m.mk_not(e),m) << ") \n";);
+        DEBUG("block", "[m_ncs] " << l << "(" << mk_pp(expr_ref(m.mk_not(e), m).get(), m) << ") \n";);
     }
 
     if (!lits.empty()) {
