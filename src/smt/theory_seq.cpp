@@ -522,7 +522,7 @@ void theory_seq::print_formulas(zstring msg){
 
     if(!m_ncs.empty()) DEBUG("input","Not Contains:\n";);
     for (auto const & nc:m_ncs){
-        DEBUG("input","not " << mk_bounded_pp(nc.contains(), m, 2)<<"\n";);
+        DEBUG("input","not " << mk_pp(nc.contains(), m, 2)<<"\n";);
     }
 
     if(!m_rcs.empty()) DEBUG("input","Regular Constraints:\n";);
@@ -881,8 +881,9 @@ expr_ref_vector theory_seq::length_of_string_variable_equals_sum_of_loop_length_
     }
     return expv;
 }
-bool theory_seq::flatten_string_constraints() {
+lbool theory_seq::flatten_string_constraints() {
     std::vector<int> segment_vector = get_segment_vector();
+    bool appear_unknown = false;
     for (int segment : segment_vector) {
         nonnegative_variables.reset();
         expr_ref_vector add_axiom(m);
@@ -906,6 +907,14 @@ bool theory_seq::flatten_string_constraints() {
             }
         }
         lbool result = independent_solver.check(add_axiom);
+        // std::cout << ">>>>>>>>>>>>>>>>>>>>>> ";
+        // std::cout << result << "\n";
+        // for (int i=0; i<add_axiom.size(); i++)
+        //     std::cout << mk_pp(add_axiom.get(i), m) << "\n";
+        // std::cout << "======================\n";
+        // for (int i=0; i<independent_solver.get_unsat_core_size(); i++)
+        //     std::cout << mk_pp(independent_solver.get_unsat_core_expr(i), m) << "\n";
+        // std::cout << "<<<<<<<<<<<<<<<<<<<<<<\n";
 
         if (is_debug_enabled("dump_flattening")) // only the last segment will remain
             dump_flattening(segment, add_axiom);
@@ -913,7 +922,7 @@ bool theory_seq::flatten_string_constraints() {
         if (result == l_true) {
             // if (is_debug_enabled("model"))
             //     print_model(indp_solver.get_context(), segment);
-            return true;
+            return l_true;
         }
         else if (result == l_false) {
             continue;
@@ -923,11 +932,13 @@ bool theory_seq::flatten_string_constraints() {
             // }
         }
         else {
+            appear_unknown = true;
             continue;
             // SASSERT(false);
         }
     }
-    return false;
+    if (appear_unknown) return l_undef;
+    return l_false;
 }
 
 /** \brief
@@ -1585,9 +1596,14 @@ final_check_status theory_seq::final_check_eh() {
 
     if (is_debug_enabled("assignment")) ctx.display_assignment(std::cout);
 
-    if (flatten_string_constraints()) {
+    lbool result = flatten_string_constraints();
+    if (result == l_true) {
         return FC_DONE;
-    } else {
+    } else if (result == l_undef) {
+        get_context().set_underapproximation_flag_to_true();
+        block_current_assignment();
+        return FC_CONTINUE;
+    } else { SASSERT(result == l_false);
         block_current_assignment();
         return FC_CONTINUE;
     }
