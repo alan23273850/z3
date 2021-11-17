@@ -20,7 +20,10 @@ def from_file_to_data_row(file, timeout):
         if 'sat' in stdoutList: res = 'sat'
         if 'unsat' in stdoutList:
             if res: raise Exception()
-            res = 'unsat'
+            if 'm_is_underapproximation' in stdoutList:
+                res = 'unsat_IncompleteSearch'
+            else:
+                res = 'unsat'
         if 'unknown' in stdoutList:
             if res: raise Exception()
             res = 'unknown'

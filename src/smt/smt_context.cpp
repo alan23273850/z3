@@ -3685,8 +3685,8 @@ namespace smt {
               get_guessed_literals(guessed_lits);
               tout << guessed_lits << "\n";);
         end_search();
-        if (status==l_false && m_is_underapproximation)
-            status = l_undef;
+        // if (status==l_false && m_is_underapproximation)
+        //     status = l_undef;
         return status;
     }
 
