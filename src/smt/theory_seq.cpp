@@ -575,7 +575,7 @@ expr_ref_vector theory_seq::flatten_disequalities(int size) {
     // bool change = false;
     expr_ref_vector add_axiom(m);
     for (unsigned i=0; i<m_nqs.size(); i++) {
-        // get_context().set_underapproximation_flag_to_true();
+        get_context().set_underapproximation_flag_to_true();
         ne &nq = m_nqs.ref(i); // display_disequation(std::cout, nq);
         const auto id_pair = std::make_pair(nq.l().get()->get_id(), nq.r().get()->get_id());
         // const auto id_pair = std::make_pair(std::min(nq.l().get()->get_id(), nq.r().get()->get_id()), std::max(nq.l().get()->get_id(), nq.r().get()->get_id()));
@@ -972,7 +972,7 @@ expr_ref_vector theory_seq::flatten_int_string_conversions(int size) {
                 }
             }
             else {
-                // get_context().set_underapproximation_flag_to_true();
+                get_context().set_underapproximation_flag_to_true();
                 expr_ref_vector expv(m);
 
                 // Case 1. empty string ==> -1
@@ -1019,7 +1019,7 @@ expr_ref_vector theory_seq::flatten_int_string_conversions(int size) {
             add_axiom.push_back(m_autil.mk_ge(e, m_autil.mk_int(-1)));
         } else if (m_util.str.is_itos(e, n)) { // std::cout << mk_pp(e, m) << "\n";
             s = e;
-            // get_context().set_underapproximation_flag_to_true();
+            get_context().set_underapproximation_flag_to_true();
             expr_ref_vector expv(m);
 
             // Case 1. n >= 0
@@ -1069,7 +1069,7 @@ expr_ref_vector theory_seq::flatten_equalities(int size) {
     for (auto const& eq: m_rep) {
         if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
             eq.e && eq.e->get_sort()==m_util.mk_string_sort()) { // std::cout << mk_pp(eq.v, m) << " = " << mk_pp(eq.e, m) << "\n";
-            // get_context().set_underapproximation_flag_to_true();
+            get_context().set_underapproximation_flag_to_true();
             std::vector<std::tuple<formula_type, std::pair<int, int>, expr_ref_vector, expr_ref_vector>> eqs;
 
             expr_ref_vector lhs(m);
@@ -1131,7 +1131,7 @@ expr_ref_vector theory_seq::flatten_equalities(int size) {
         }
     }
     for (const auto &eq: m_eqs) { // display_equation(std::cout, eq);
-        // get_context().set_underapproximation_flag_to_true();
+        get_context().set_underapproximation_flag_to_true();
         // if(!m_flattened_eqids.contains(eq.id())) {
         //     m_flattened_eqids.push_back(eq.id());
         std::vector<std::tuple<formula_type, unsigned, expr_ref_vector, expr_ref_vector>> eqs;
@@ -1600,7 +1600,7 @@ final_check_status theory_seq::final_check_eh() {
     if (result == l_true) {
         return FC_DONE;
     } else if (result == l_undef) {
-        get_context().set_underapproximation_flag_to_true();
+        // get_context().set_underapproximation_flag_to_true();
         block_current_assignment();
         return FC_CONTINUE;
     } else { SASSERT(result == l_false);
@@ -2449,7 +2449,7 @@ expr_ref_vector theory_seq::solve_nc(unsigned idx, int p) {
         if (chA >= 0 && chB >= 0) {
             add_axiom.push_back(m.mk_eq(n.contains(), m_autil.mk_eq(m_autil.mk_int(chA), m_autil.mk_int(chB))));
         } else {
-            // get_context().set_underapproximation_flag_to_true();
+            get_context().set_underapproximation_flag_to_true();
 
             expr_ref_vector lhs(m), rhs(m);
             m_util.str.get_concat_units(a, lhs);
