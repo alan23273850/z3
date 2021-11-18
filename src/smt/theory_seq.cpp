@@ -896,22 +896,28 @@ lbool theory_seq::flatten_string_constraints() {
         smt_params fp = get_fparams();
         fp.m_string_solver = symbol("none");
         kernel independent_solver(m, fp);
-        expr_ref_vector Assigns(m);
-        ctx.get_assignments(Assigns);
         for (unsigned i = 0; i < ctx.get_num_asserted_formulas(); ++i) {
             add_axiom.push_back(ctx.get_asserted_formula(i));
         }
+        expr_ref_vector Assigns(m);
+        ctx.get_assignments(Assigns);
         for (auto &e:Assigns) {
             if (ctx.is_relevant(e)) {
                 add_axiom.push_back(e);
             }
         }
-        lbool result = independent_solver.check(add_axiom);
         // std::cout << ">>>>>>>>>>>>>>>>>>>>>> ";
         // std::cout << result << "\n";
         // for (int i=0; i<add_axiom.size(); i++)
         //     std::cout << mk_pp(add_axiom.get(i), m) << "\n";
         // std::cout << "======================\n";
+        lbool result;
+        try {
+            result = independent_solver.check(add_axiom);
+        } catch (...) {
+            std::cout << "The independent solver cannot obtain a solution...\n";
+            SASSERT(false);
+        }
         // for (int i=0; i<independent_solver.get_unsat_core_size(); i++)
         //     std::cout << mk_pp(independent_solver.get_unsat_core_expr(i), m) << "\n";
         // std::cout << "<<<<<<<<<<<<<<<<<<<<<<\n";
@@ -2444,7 +2450,7 @@ expr_ref_vector theory_seq::solve_nc(unsigned idx, int p) {
     } else {
         int chA = atom_is_const_char_unicode(a);
         int chB = atom_is_const_char_unicode(b);
-        var_ref shift(m.mk_var(0, m_autil.mk_int()), m);
+        // var_ref shift(m.mk_var(0, m_autil.mk_int()), m);
 
         if (chA >= 0 && chB >= 0) {
             add_axiom.push_back(m.mk_eq(n.contains(), m_autil.mk_eq(m_autil.mk_int(chA), m_autil.mk_int(chB))));
@@ -2457,42 +2463,49 @@ expr_ref_vector theory_seq::solve_nc(unsigned idx, int p) {
             from_word_term_to_FA(lhs, p, FA_left);
             from_word_term_to_FA(rhs, p, FA_right);
 
-            expr_ref_vector disjunction(m);
-            for (int i=0; i<(int)FA_left.size(); i++) {
-                for (int j=0; j<(int)FA_right.size(); j++) {
-                    expr_ref_vector conjunction(m);
-                    conjunction.push_back(m_autil.mk_ge(FA_left.counters[i].get(), m_autil.mk_int(1)));
-                    conjunction.push_back(m_autil.mk_ge(FA_right.counters[j].get(), m_autil.mk_int(1)));
-                    conjunction.push_back(m.mk_not(m_autil.mk_eq(FA_left.characters[i].get(), FA_right.characters[j].get())));
+            rational len1, len2;
+            int UB = p;
+            if (get_length(a, len1) && get_length(b, len2)) {
+                if (len1 - len2 < UB)
+                    UB = (len1 - len2).get_int32();
+            }
+            expr_ref_vector disjunction(m), conjunction2(m);
+            for (int z=0; z<=UB; z++) {
+                disjunction.reset();
+                for (int i=0; i<(int)FA_left.size(); i++) {
+                    for (int j=0; j<(int)FA_right.size(); j++) {
+                        expr_ref_vector conjunction(m);
+                        conjunction.push_back(m_autil.mk_ge(FA_left.counters[i].get(), m_autil.mk_int(1)));
+                        conjunction.push_back(m_autil.mk_ge(FA_right.counters[j].get(), m_autil.mk_int(1)));
+                        conjunction.push_back(m.mk_not(m_autil.mk_eq(FA_left.characters[i].get(), FA_right.characters[j].get())));
 
-                    expr_ref_vector sumA(m);
-                    sumA.push_back(shift);
-                    for (int i2=0; i2<i; i2++) /* be careful of < */
-                        sumA.push_back(FA_left.counters[i2].get());
-                    sumA.push_back(m_autil.mk_int(1));
-                    expr_ref_vector sumB(m);
-                    for (int j2=0; j2<=j; j2++) /* be careful of <= */
-                        sumB.push_back(FA_right.counters[j2].get());
-                    conjunction.push_back(m_autil.mk_le(m_autil.mk_add(sumA), m_autil.mk_add(sumB)));
+                        expr_ref_vector sumA(m);
+                        sumA.push_back(m_autil.mk_int(z)); // shift);
+                        for (int i2=0; i2<i; i2++) /* be careful of < */
+                            sumA.push_back(FA_left.counters[i2].get());
+                        sumA.push_back(m_autil.mk_int(1));
+                        expr_ref_vector sumB(m);
+                        for (int j2=0; j2<=j; j2++) /* be careful of <= */
+                            sumB.push_back(FA_right.counters[j2].get());
+                        conjunction.push_back(m_autil.mk_le(m_autil.mk_add(sumA), m_autil.mk_add(sumB)));
 
-                    sumA.reset();
-                    sumA.push_back(shift);
-                    for (int i2=0; i2<=i; i2++) /* be careful of <= */
-                        sumA.push_back(FA_left.counters[i2].get());
-                    sumB.reset();
-                    for (int j2=0; j2<j; j2++) /* be careful of < */
-                        sumB.push_back(FA_right.counters[j2].get());
-                    sumB.push_back(m_autil.mk_int(1));
-                    conjunction.push_back(m_autil.mk_ge(m_autil.mk_add(sumA), m_autil.mk_add(sumB)));
+                        sumA.reset();
+                        sumA.push_back(m_autil.mk_int(z)); // shift);
+                        for (int i2=0; i2<=i; i2++) /* be careful of <= */
+                            sumA.push_back(FA_left.counters[i2].get());
+                        sumB.reset();
+                        for (int j2=0; j2<j; j2++) /* be careful of < */
+                            sumB.push_back(FA_right.counters[j2].get());
+                        sumB.push_back(m_autil.mk_int(1));
+                        conjunction.push_back(m_autil.mk_ge(m_autil.mk_add(sumA), m_autil.mk_add(sumB)));
 
-                    disjunction.push_back(m.mk_and(conjunction));
+                        disjunction.push_back(m.mk_and(conjunction));
+                    }
                 }
+                conjunction2.push_back(m.mk_or(disjunction));
             }
             expr_ref e(m.mk_eq(m.mk_not(n.contains()), m.mk_or(m_autil.mk_le(m_util.str.mk_length(a), m_autil.mk_sub(m_util.str.mk_length(b), m_autil.mk_int(1))),
-                                                            m.mk_forall(1, std::initializer_list<sort*>({m_autil.mk_int()}).begin(), std::initializer_list<symbol>({symbol("shift")}).begin(),
-                                                                            m.mk_or(m.mk_not(m.mk_and(m_autil.mk_le(m_autil.mk_int(0), shift),
-                                                                                                        m_autil.mk_le(shift, m_autil.mk_sub(m_util.str.mk_length(a), m_util.str.mk_length(b))))),
-                                                                                    m.mk_or(disjunction))))), m);
+                                                      m.mk_and(m_autil.mk_le(m_util.str.mk_length(a), m_autil.mk_add(m_util.str.mk_length(b), m_autil.mk_int(UB))), m.mk_and(conjunction2)))), m);
             DEBUG("fc_verbose", mk_pp(e, m););
             add_axiom.push_back(e);
             add_axiom.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(lhs, p));
