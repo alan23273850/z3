@@ -943,6 +943,7 @@ public:
         }
         else {
             TRACE("arith", tout << "Could not internalize " << mk_pp(atom, m) << "\n";);
+            SASSERT(false); // only for debugging purposes
             found_unsupported(atom);
             return true;
         }
