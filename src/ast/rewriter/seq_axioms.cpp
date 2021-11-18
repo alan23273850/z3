@@ -260,13 +260,13 @@ namespace seq {
         add_clause(~le_is_0, ~i_ge_0, ls_le_i, ls_le_0, l_le_0);
 
         /************************* heuristics *************************/
-        add_clause(expr_ref(m.mk_not(m.mk_and(mk_ge(i, 0), mk_ge_e(mk_len(s), mk_add(i, l)))), m),
-                   mk_ge_e(mk_len(e), l));
-        add_clause(expr_ref(m.mk_not(m.mk_and(mk_ge(i, 0), mk_le_e(mk_len(s), mk_add(i, l)))), m),
-                   mk_ge_e(mk_len(e), mk_sub(mk_len(s), i)));
-        add_clause(expr_ref(m.mk_not(mk_ge(l, 0)), m), mk_le_e(mk_len(e), l));
-        add_clause(expr_ref(m.mk_not(mk_ge(mk_len(s), i)), m), mk_le_e(mk_len(e), mk_sub(mk_len(s), i)));
-        add_clause(mk_le_e(mk_len(e), mk_len(s)));
+        add_clause(expr_ref(m.mk_not(m.mk_and(mk_ge(i, 0), mk_ge(mk_sub(mk_len(s), mk_add(i, l)), 0))), m),
+                   mk_ge(mk_sub(mk_len(e), l), 0));
+        add_clause(expr_ref(m.mk_not(m.mk_and(mk_ge(i, 0), mk_le(mk_sub(mk_len(s), mk_add(i, l)), 0))), m),
+                   mk_ge(mk_sub(mk_len(e), mk_sub(mk_len(s), i)), 0));
+        add_clause(expr_ref(m.mk_not(mk_ge(l, 0)), m), mk_le(mk_sub(mk_len(e), l), 0));
+        add_clause(expr_ref(m.mk_not(mk_ge(mk_sub(mk_len(s), i), 0)), m), mk_le(mk_sub(mk_len(e), mk_sub(mk_len(s), i)), 0));
+        add_clause(mk_le(mk_sub(mk_len(e), mk_len(s)), 0));
     }
 
     void axioms::tail_axiom(expr* e, expr* s) {    
@@ -519,9 +519,9 @@ namespace seq {
         }
 
         /************************* heuristics *************************/
-        add_clause(mk_ge_e(i, a.mk_int(-1)));
-        add_clause(expr_ref(m.mk_not(mk_ge_e(mk_len(t), mk_len(s))), m), mk_le_e(i, mk_sub(mk_len(t), mk_len(s))));
-        add_clause(mk_le_e(i, mk_len(t)));
+        add_clause(mk_ge(i, -1));
+        add_clause(expr_ref(m.mk_not(mk_ge(mk_sub(mk_len(t), mk_len(s)), 0)), m), mk_le(mk_sub(i, mk_sub(mk_len(t), mk_len(s))), 0));
+        add_clause(mk_le(mk_sub(i, mk_len(t)), 0));
     }
 
     /**
@@ -599,12 +599,12 @@ namespace seq {
         tightest_prefix(s, x);
 
         /************************* heuristics *************************/
-        add_clause(expr_ref(m.mk_not(m.mk_or(mk_ge_e(mk_len(t), mk_len(s)), mk_ge_e(mk_len(t), mk_len(u)))), m),
-                   mk_ge_e(mk_len(r), mk_len(u)));
-        add_clause(mk_ge_e(mk_len(r), mk_sub(mk_len(u), mk_len(s))));
-        add_clause(expr_ref(m.mk_not(mk_ge_e(mk_len(s), mk_len(t))), m),
-                   mk_le_e(mk_len(r), mk_len(u)));
-        add_clause(mk_le_e(mk_len(r), mk_add(mk_len(u), mk_len(t))));
+        add_clause(expr_ref(m.mk_not(m.mk_or(mk_ge(mk_sub(mk_len(t), mk_len(s)), 0), mk_ge(mk_sub(mk_len(t), mk_len(u)), 0))), m),
+                   mk_ge(mk_sub(mk_len(r), mk_len(u)), 0));
+        add_clause(mk_ge(mk_sub(mk_len(r), mk_sub(mk_len(u), mk_len(s))), 0));
+        add_clause(expr_ref(m.mk_not(mk_ge(mk_sub(mk_len(s), mk_len(t)), 0)), m),
+                   mk_le(mk_sub(mk_len(r), mk_len(u)), 0));
+        add_clause(mk_le(mk_sub(mk_len(r), mk_add(mk_len(u), mk_len(t))), 0));
     }
 
     /*
