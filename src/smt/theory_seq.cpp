@@ -2461,11 +2461,19 @@ expr_ref_vector theory_seq::solve_nc(unsigned idx, int p) {
     VERIFY(m_util.str.is_contains(n.contains(), a, b));
 
     zstring s;
+    rational len1(-1), len2(-1);
     if (m_util.str.is_string(b, s) && s.length() == 0) {
         add_axiom.push_back(m.mk_eq(n.contains(), m.mk_true()));
     } else if (m_util.str.is_string(a, s) && s.length() == 0) {
         add_axiom.push_back(m.mk_eq(n.contains(), m_autil.mk_eq(m_util.str.mk_length(b), m_autil.mk_int(0))));
+    } else if (get_length(a, len1) && get_length(b, len2) && len1 < len2) {
+        add_axiom.push_back(m.mk_eq(n.contains(), m.mk_false()));
     } else {
+        int UB = p;
+        if (len1!=-1 && len2!=-1 && (len1-len2<UB)) {
+            UB = (len1 - len2).get_int32();
+        }
+
         int chA = atom_is_const_char_unicode(a);
         int chB = atom_is_const_char_unicode(b);
         // var_ref shift(m.mk_var(0, m_autil.mk_int()), m);
@@ -2481,12 +2489,6 @@ expr_ref_vector theory_seq::solve_nc(unsigned idx, int p) {
             from_word_term_to_FA(lhs, p, FA_left);
             from_word_term_to_FA(rhs, p, FA_right);
 
-            rational len1, len2;
-            int UB = p;
-            if (get_length(a, len1) && get_length(b, len2)) {
-                if (len1 - len2 < UB)
-                    UB = (len1 - len2).get_int32();
-            }
             expr_ref_vector disjunction(m), conjunction2(m);
             for (int shift=0; shift<=UB; shift++) {
                 disjunction.reset();
