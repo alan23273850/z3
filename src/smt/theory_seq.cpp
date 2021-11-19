@@ -1021,8 +1021,6 @@ expr_ref_vector theory_seq::flatten_int_string_conversions(int size) {
                 expr_ref case3(m.mk_and(m.mk_and(base), m.mk_or(valid)), m);
                 add_axiom.push_back(m.mk_and(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(s, size), m.mk_or(case1, case2, case3)));
             }
-            /************************* heuristics *************************/
-            add_axiom.push_back(m_autil.mk_ge(e, m_autil.mk_int(-1)));
         } else if (m_util.str.is_itos(e, n)) { // std::cout << mk_pp(e, m) << "\n";
             s = e;
             get_context().set_underapproximation_flag_to_true();
@@ -1058,11 +1056,6 @@ expr_ref_vector theory_seq::flatten_int_string_conversions(int size) {
             expr_ref case2(m.mk_and(m_autil.mk_le(n, m_autil.mk_int(-1)), m.mk_and(expv)), m);
 
             add_axiom.push_back(m.mk_or(case1, case2));
-
-            /************************* heuristics *************************/
-            add_axiom.push_back(m.mk_or(m.mk_not(m_autil.mk_ge(n, m_autil.mk_int(0))), m_autil.mk_ge(m_util.str.mk_length(e), m_autil.mk_int(1))));
-            add_axiom.push_back(m.mk_or(m.mk_not(m_autil.mk_ge(n, m_autil.mk_int(1))), m_autil.mk_le(m_util.str.mk_length(e), n)));
-            add_axiom.push_back(m.mk_or(m.mk_not(m_autil.mk_ge(n, m_autil.mk_int(0))), m_autil.mk_le(m_util.str.mk_length(e), m_autil.mk_add(m_autil.mk_int(1), n))));
         } else
             SASSERT(false);
     }
