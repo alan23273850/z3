@@ -2463,7 +2463,7 @@ expr_ref_vector theory_seq::solve_nc(unsigned idx, int p) {
                     UB = (len1 - len2).get_int32();
             }
             expr_ref_vector disjunction(m), conjunction2(m);
-            for (int z=0; z<=UB; z++) {
+            for (int shift=0; shift<=UB; shift++) {
                 disjunction.reset();
                 for (int i=0; i<(int)FA_left.size(); i++) {
                     for (int j=0; j<(int)FA_right.size(); j++) {
@@ -2473,20 +2473,20 @@ expr_ref_vector theory_seq::solve_nc(unsigned idx, int p) {
                         conjunction.push_back(m.mk_not(m_autil.mk_eq(FA_left.characters[i].get(), FA_right.characters[j].get())));
 
                         expr_ref_vector sumA(m);
-                        sumA.push_back(m_autil.mk_int(z)); // shift);
                         for (int i2=0; i2<i; i2++) /* be careful of < */
                             sumA.push_back(FA_left.counters[i2].get());
                         sumA.push_back(m_autil.mk_int(1));
                         expr_ref_vector sumB(m);
+                        sumB.push_back(m_autil.mk_int(shift));
                         for (int j2=0; j2<=j; j2++) /* be careful of <= */
                             sumB.push_back(FA_right.counters[j2].get());
                         conjunction.push_back(m_autil.mk_le(m_autil.mk_add(sumA), m_autil.mk_add(sumB)));
 
                         sumA.reset();
-                        sumA.push_back(m_autil.mk_int(z)); // shift);
                         for (int i2=0; i2<=i; i2++) /* be careful of <= */
                             sumA.push_back(FA_left.counters[i2].get());
                         sumB.reset();
+                        sumB.push_back(m_autil.mk_int(shift));
                         for (int j2=0; j2<j; j2++) /* be careful of < */
                             sumB.push_back(FA_right.counters[j2].get());
                         sumB.push_back(m_autil.mk_int(1));
@@ -2495,12 +2495,14 @@ expr_ref_vector theory_seq::solve_nc(unsigned idx, int p) {
                         disjunction.push_back(m.mk_and(conjunction));
                     }
                 }
-                conjunction2.push_back(m.mk_or(disjunction));
+                conjunction2.push_back(m.mk_or(m.mk_not(m_autil.mk_le(m_autil.mk_int(shift), m_autil.mk_sub(m_util.str.mk_length(a), m_util.str.mk_length(b)))),
+                                               m.mk_or(disjunction)));
             }
             expr_ref e(m.mk_eq(m.mk_not(n.contains()), m.mk_or(m_autil.mk_le(m_util.str.mk_length(a), m_autil.mk_sub(m_util.str.mk_length(b), m_autil.mk_int(1))),
-                                                      m.mk_and(m_autil.mk_le(m_util.str.mk_length(a), m_autil.mk_add(m_util.str.mk_length(b), m_autil.mk_int(UB))), m.mk_and(conjunction2)))), m);
+                                                               m.mk_and(conjunction2))), m);
             DEBUG("fc_verbose", mk_pp(e, m););
             add_axiom.push_back(e);
+            add_axiom.push_back(m_autil.mk_le(m_util.str.mk_length(a), m_autil.mk_add(m_util.str.mk_length(b), m_autil.mk_int(UB))));
             add_axiom.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(lhs, p));
             add_axiom.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(rhs, p));
         }
