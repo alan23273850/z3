@@ -907,13 +907,13 @@ lbool theory_seq::flatten_string_constraints() {
             }
         }
         // std::cout << ">>>>>>>>>>>>>>>>>>>>>> ";
-        // std::cout << result << "\n";
         // for (int i=0; i<add_axiom.size(); i++)
         //     std::cout << mk_pp(add_axiom.get(i), m) << "\n";
         // std::cout << "======================\n";
         lbool result;
         try {
             result = independent_solver.check(add_axiom);
+            // std::cout << result << "\n";
         } catch (...) {
             std::cout << "The independent solver cannot obtain a solution...\n";
             SASSERT(false);
@@ -926,8 +926,8 @@ lbool theory_seq::flatten_string_constraints() {
             dump_flattening(segment, add_axiom);
 
         if (result == l_true) {
-            // if (is_debug_enabled("model"))
-            //     print_model(indp_solver.get_context(), segment);
+            if (is_debug_enabled("model"))
+                print_model(independent_solver.get_context(), segment);
             return l_true;
         }
         else if (result == l_false) {
@@ -1276,17 +1276,22 @@ void theory_seq::print_FA_parameters(const arith_value &local_arith_value, const
             // rational _unicode;
             // if (!get_num_value(local_arith_value, mk_FA_self_loop_char(atom, 0), _unicode))
             // SASSERT(false);
-            // DISPLAYPARAMETER("mk_FA_self_loop_char("<<mk_pp(atom,m)<<", 0) = " << _unicode << "\n";);
-            // DISPLAYPARAMETER("mk_FA_self_loop_counter("<<mk_pp(atom,m)<<", 0) = 1\n";);
+            // DISPLAYPARAMETER("mk_FA_self_loop_char("<<mk_pp(atom,m)<<", 0) = " << _unicode << "\n";)
+            // DISPLAYPARAMETER("mk_FA_self_loop_counter("<<mk_pp(atom,m)<<", 0) = 1\n";)
         else {
             rational _counter, _unicode;
             for (int i=0; i<size; i++) {
-                if (!get_num_value(local_arith_value, mk_FA_self_loop_counter(atom, i), _counter))
-                    { SASSERT(i == 0); break; }
+                _counter = _unicode = -1;
+                DISPLAYPARAMETER("mk_FA_self_loop_char(" << mk_pp(atom, m) << ", " << i << ") = ";)
                 if (!get_num_value(local_arith_value, mk_FA_self_loop_char(atom, i), _unicode))
-                    { SASSERT(i == 0); break; }
-                DISPLAYPARAMETER("mk_FA_self_loop_char("<<mk_pp(atom,m)<<", "<<i<< ") = " << _unicode << "\n";);
-                DISPLAYPARAMETER("mk_FA_self_loop_counter("<<mk_pp(atom,m)<<", "<<i<< ") = " << _counter << "\n";);
+                    DISPLAYPARAMETER("UNDEFINED\n";)
+                else
+                    DISPLAYPARAMETER(_unicode << "\n";)
+                DISPLAYPARAMETER("mk_FA_self_loop_counter(" << mk_pp(atom, m) << ", " << i << ") = ";)
+                if (!get_num_value(local_arith_value, mk_FA_self_loop_counter(atom, i), _counter))
+                    DISPLAYPARAMETER("UNDEFINED\n";)
+                else
+                    DISPLAYPARAMETER(_counter << "\n";)
             }
         }
     }
@@ -1349,6 +1354,26 @@ void theory_seq::print_model(context &local_ctx, int size) {
         expr_ref_vector term(m);
         m_util.str.get_concat(nq.l(), term);
         m_util.str.get_concat(nq.r(), term);
+        print_FA_parameters(local_arith_value, term, size);
+        DISPLAYMODEL("=====================\n";);
+    }
+    for (const auto &nc: m_ncs) {
+        expr *a = nullptr, *b = nullptr;
+        VERIFY(m_util.str.is_contains(nc.contains(), a, b));
+        DISPLAYMODEL("(m_ncs) =============\n";);
+        int mode = 0;
+        for (const auto &t: {a, b}) {
+            expr_ref_vector term(m);
+            m_util.str.get_concat(t, term);
+            print_term(local_arith_value, term, size);
+            if (!mode) DISPLAYMODEL("\ndoes not contain";);
+            mode++;
+            DISPLAYMODEL("\n";);
+        }
+        DISPLAYMODEL("=====================\n";);
+        expr_ref_vector term(m);
+        m_util.str.get_concat(a, term);
+        m_util.str.get_concat(b, term);
         print_FA_parameters(local_arith_value, term, size);
         DISPLAYMODEL("=====================\n";);
     }
