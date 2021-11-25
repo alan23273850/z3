@@ -545,9 +545,9 @@ namespace smt {
         void print_eq_from_enode(const expr_ref_vector& terms);
 
         void print_formulas(zstring msg);
-        void print_term(const arith_value &local_arith_value, const expr_ref_vector &term, int size);
-        void print_FA_parameters(const arith_value &local_arith_value, const expr_ref_vector &term, int size);
-        void print_model(context &local_ctx, int size);
+        void print_term(model *mdl, const expr_ref_vector &term, int size);
+        void print_FA_parameters(model *mdl, const expr_ref_vector &term, int size);
+        void print_model(model *mdl, int size);
         bool check_parikh_image();       // propagate check_parikh_image equalities
         bool simplify_and_solve_eqs();   // solve unitary equalities
         bool reduce_length_eq();

@@ -909,6 +909,7 @@ lbool theory_seq::flatten_string_constraints() {
         lbool result;
         try {
             result = independent_solver.check(add_axiom);
+            // std::cout << "======================\n";
             // std::cout << result << "\n";
             // std::cout << "======================\n";
         } catch (...) {
@@ -924,8 +925,12 @@ lbool theory_seq::flatten_string_constraints() {
             dump_flattening(segment, add_axiom);
 
         if (result == l_true) {
-            if (is_debug_enabled("model"))
-                print_model(independent_solver.get_context(), segment);
+            if (is_debug_enabled("model")) {
+                model_ref mr;
+                independent_solver.get_context().get_model(mr);
+                model *mdl = mr.get();
+                print_model(mdl, segment);
+            }
             return l_true;
         }
         else if (result == l_false) {
@@ -1239,11 +1244,11 @@ bool theory_seq::check_parikh_image() {
     return change;
 }
 
-void theory_seq::print_term(const arith_value &local_arith_value, const expr_ref_vector &term, int size) {
+void theory_seq::print_term(model *mdl, const expr_ref_vector &term, int size) {
     for (const auto &atom: term) {
         int ch;
         if ((ch = atom_is_const_char_unicode(atom)) >= 0) {
-            DISPLAYMODEL("(" << ch << ")";);
+            DISPLAYMODEL("{" << ch << "}";);
         } //else if (atom_is_unit_var(atom)) {
             // rational _unicode;
             // DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
@@ -1254,12 +1259,19 @@ void theory_seq::print_term(const arith_value &local_arith_value, const expr_ref
             rational _counter, _unicode;
             DISPLAYMODEL("[" << mk_pp(atom, m) << ": ";);
             for (int i=0; i<size; i++) {
-                if (!get_num_value(local_arith_value, mk_FA_self_loop_counter(atom, i), _counter))
-                    { SASSERT(i == 0); break; }
-                if (!get_num_value(local_arith_value, mk_FA_self_loop_char(atom, i), _unicode))
-                    { SASSERT(i == 0); break; }
+                expr_ref result(m);
+                SASSERT(mdl->eval_expr(mk_FA_self_loop_counter(atom, i), result));
+                if (!get_num_value(result, _counter)) {
+                    DISPLAYMODEL("???";);
+                    continue;
+                }
+                SASSERT(mdl->eval_expr(mk_FA_self_loop_char(atom, i), result));
+                if (!get_num_value(result, _unicode)) {
+                    DISPLAYMODEL("???";);
+                    continue;
+                }
                 for (int j=0; j<_counter; j++) {
-                    DISPLAYMODEL("(" << _unicode << ")";);
+                    DISPLAYMODEL("{" << _unicode << "}";);
                 }
             }
             DISPLAYMODEL("]";);
@@ -1267,37 +1279,37 @@ void theory_seq::print_term(const arith_value &local_arith_value, const expr_ref
     }
 }
 
-void theory_seq::print_FA_parameters(const arith_value &local_arith_value, const expr_ref_vector &term, int size) {
+void theory_seq::print_FA_parameters(model *mdl, const expr_ref_vector &term, int size) {
     for (const auto &atom: term) {
         if (atom_is_const_char_unicode(atom) >= 0) {
-        } //else if (atom_is_unit_var(atom)) {
+        // } else if (atom_is_unit_var(atom)) {
             // rational _unicode;
             // if (!get_num_value(local_arith_value, mk_FA_self_loop_char(atom, 0), _unicode))
             // SASSERT(false);
             // DISPLAYPARAMETER("mk_FA_self_loop_char("<<mk_pp(atom,m)<<", 0) = " << _unicode << "\n";)
             // DISPLAYPARAMETER("mk_FA_self_loop_counter("<<mk_pp(atom,m)<<", 0) = 1\n";)
-        else {
+        } else {
+            expr_ref result(m);
             rational _counter, _unicode;
             for (int i=0; i<size; i++) {
-                _counter = _unicode = -1;
-                DISPLAYPARAMETER("mk_FA_self_loop_char(" << mk_pp(atom, m) << ", " << i << ") = ";)
-                if (!get_num_value(local_arith_value, mk_FA_self_loop_char(atom, i), _unicode))
-                    DISPLAYPARAMETER("UNDEFINED\n";)
-                else
+                DISPLAYPARAMETER("seq.fa_self_loop_char(" << mk_pp(atom, m) << ", " << i << ") = ";)
+                SASSERT(mdl->eval_expr(mk_FA_self_loop_char(atom, i), result));
+                if (get_num_value(result, _unicode))
                     DISPLAYPARAMETER(_unicode << "\n";)
-                DISPLAYPARAMETER("mk_FA_self_loop_counter(" << mk_pp(atom, m) << ", " << i << ") = ";)
-                if (!get_num_value(local_arith_value, mk_FA_self_loop_counter(atom, i), _counter))
-                    DISPLAYPARAMETER("UNDEFINED\n";)
                 else
+                    DISPLAYPARAMETER("???\n";)
+                DISPLAYPARAMETER("seq.fa_self_loop_counter(" << mk_pp(atom, m) << ", " << i << ") = ";)
+                SASSERT(mdl->eval_expr(mk_FA_self_loop_counter(atom, i), result));
+                if (get_num_value(result, _counter))
                     DISPLAYPARAMETER(_counter << "\n";)
+                else
+                    DISPLAYPARAMETER("???\n";)
             }
         }
     }
 }
 
-void theory_seq::print_model(context &local_ctx, int size) {
-    arith_value local_arith_value(m);
-    local_arith_value.init(&local_ctx);
+void theory_seq::print_model(model *mdl, int size) {   
     for (const auto &eq: m_rep) {
         if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
             eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
@@ -1307,7 +1319,7 @@ void theory_seq::print_model(context &local_ctx, int size) {
                 DISPLAYMODEL((!mode ? "LHS: " : "RHS: "););// << mk_pp(t, m) << " == ";);
                 expr_ref_vector term(m);
                 m_util.str.get_concat(t, term);
-                print_term(local_arith_value, term, size);
+                print_term(mdl, term, size);
                 if (!mode) DISPLAYMODEL("\n==";);
                 mode++;
                 DISPLAYMODEL("\n";);
@@ -1317,7 +1329,7 @@ void theory_seq::print_model(context &local_ctx, int size) {
             expr_ref_vector term(m);
             m_util.str.get_concat(eq.v, term);
             m_util.str.get_concat(eq.e, term);
-            print_FA_parameters(local_arith_value, term, size);
+            print_FA_parameters(mdl, term, size);
             DISPLAYMODEL("=====================\n";);
         }
     }
@@ -1326,14 +1338,14 @@ void theory_seq::print_model(context &local_ctx, int size) {
         int mode = 0;
         for (const auto &term: {eq.ls, eq.rs}) {
             DISPLAYMODEL((!mode ? "LHS: " : "RHS: "););
-            print_term(local_arith_value, term, size);
+            print_term(mdl, term, size);
             if (!mode) DISPLAYMODEL("\n==";);
             mode++;
             DISPLAYMODEL("\n";);
         }
         DISPLAYMODEL("=====================\n";);
-        print_FA_parameters(local_arith_value, eq.ls, size);
-        print_FA_parameters(local_arith_value, eq.rs, size);
+        print_FA_parameters(mdl, eq.ls, size);
+        print_FA_parameters(mdl, eq.rs, size);
         DISPLAYMODEL("=====================\n";);
     }
     for (const auto &nq: m_nqs) {
@@ -1343,7 +1355,7 @@ void theory_seq::print_model(context &local_ctx, int size) {
             DISPLAYMODEL((!mode ? "LHS: " : "RHS: "););// << mk_pp(t, m) << " == ";);
             expr_ref_vector term(m);
             m_util.str.get_concat(t.get(), term);
-            print_term(local_arith_value, term, size);
+            print_term(mdl, term, size);
             if (!mode) DISPLAYMODEL("\n!=";);
             mode++;
             DISPLAYMODEL("\n";);
@@ -1352,7 +1364,7 @@ void theory_seq::print_model(context &local_ctx, int size) {
         expr_ref_vector term(m);
         m_util.str.get_concat(nq.l(), term);
         m_util.str.get_concat(nq.r(), term);
-        print_FA_parameters(local_arith_value, term, size);
+        print_FA_parameters(mdl, term, size);
         DISPLAYMODEL("=====================\n";);
     }
     for (const auto &nc: m_ncs) {
@@ -1363,7 +1375,7 @@ void theory_seq::print_model(context &local_ctx, int size) {
         for (const auto &t: {a, b}) {
             expr_ref_vector term(m);
             m_util.str.get_concat(t, term);
-            print_term(local_arith_value, term, size);
+            print_term(mdl, term, size);
             if (!mode) DISPLAYMODEL("\ndoes not contain";);
             mode++;
             DISPLAYMODEL("\n";);
@@ -1372,7 +1384,7 @@ void theory_seq::print_model(context &local_ctx, int size) {
         expr_ref_vector term(m);
         m_util.str.get_concat(a, term);
         m_util.str.get_concat(b, term);
-        print_FA_parameters(local_arith_value, term, size);
+        print_FA_parameters(mdl, term, size);
         DISPLAYMODEL("=====================\n";);
     }
 }
