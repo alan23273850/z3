@@ -906,17 +906,16 @@ lbool theory_seq::flatten_string_constraints() {
         // std::cout << ">>>>>>>>>>>>>>>>>>>>>> ";
         // for (int i=0; i<add_axiom.size(); i++)
         //     std::cout << mk_pp(add_axiom.get(i), m) << "\n";
+        // std::cout << "======================\n";
         lbool result;
         try {
             result = independent_solver.check(add_axiom);
-            // std::cout << "======================\n";
             // std::cout << result << "\n";
-            // std::cout << "======================\n";
         } catch (...) {
             std::cout << "The independent solver cannot obtain a solution...\n";
-            // std::cout << "======================\n";
             SASSERT(false);
         }
+        // std::cout << "<<<<<<<<<<<<<<<<<<<<<<\n";
         // for (int i=0; i<independent_solver.get_unsat_core_size(); i++)
         //     std::cout << mk_pp(independent_solver.get_unsat_core_expr(i), m) << "\n";
         // std::cout << "<<<<<<<<<<<<<<<<<<<<<<\n";
@@ -1234,6 +1233,10 @@ bool theory_seq::check_parikh_image() {
                         }
                     }
                 }
+                if (index_char_occurrence_lhs.empty())
+                    index_char_occurrence_lhs.push_back(m_autil.mk_int(0));
+                if (index_char_occurrence_rhs.empty())
+                    index_char_occurrence_rhs.push_back(m_autil.mk_int(0));
                 expr_ref lsum(m_autil.mk_add(index_char_occurrence_lhs), m), rsum(m_autil.mk_add(index_char_occurrence_rhs), m);
                 // m_rewrite(lsum); m_rewrite(rsum); // maybe rewrite is a must, but which rewriter?
                 propagate_eq(eq.dep(), lsum, rsum);
