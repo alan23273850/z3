@@ -31,6 +31,7 @@ bool theory_seq::solve_eqs(unsigned i) {
     bool change = false;
     for (; !ctx.inconsistent() && i < m_eqs.size(); ++i) {
         if (solve_eq(i)) {
+            m_eqs_erased.push_back(m_eqs[i]);
             m_eqs.erase_and_swap(i--);
             ++m_stats.m_num_reductions;
             change = true;

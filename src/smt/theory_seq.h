@@ -343,6 +343,7 @@ namespace smt {
         dependency_manager         m_dm;
         solution_map               m_rep;        // unification representative.
         scoped_vector<depeq>       m_eqs;        // set of current equations.
+        scoped_vector<depeq>       m_eqs_erased; // set of current equations already been erased.
         scoped_vector<int>         m_eqids_pkh;  // set of current equations not processed by check_parikh_image
         scoped_vector<int>         m_chars_pkh;  // set of characters to be used by check_parikh_image
         scoped_vector<std::pair<int, int>> m_nqids;   // set of current word disequality ids not processed yet

@@ -1131,60 +1131,62 @@ expr_ref_vector theory_seq::flatten_equalities(int size) {
             }
         }
     }
-    for (const auto &eq: m_eqs) { // display_equation(std::cout, eq);
-        get_context().set_underapproximation_flag_to_true();
-        // if(!m_flattened_eqids.contains(eq.id())) {
-        //     m_flattened_eqids.push_back(eq.id());
-        std::vector<std::tuple<formula_type, unsigned, expr_ref_vector, expr_ref_vector>> eqs;
-        eqs.push_back(std::make_tuple(EQ, eq.id(), eq.ls, eq.rs));
-        for (const auto &terms: {eq.ls, eq.rs}) {
-            for (const auto &term: terms) {
-                if (ensure_enode(term)->get_root() != ensure_enode(term)) {
-                    expr_ref_vector lhs(m);
-                    m_util.str.get_concat_units(ensure_enode(term)->get_root()->get_expr(), lhs);
-                    expr_ref_vector rhs(m);
-                    m_util.str.get_concat_units(term, rhs);
-                    eqs.push_back(std::make_tuple(ENODE, ensure_enode(term)->get_expr_id(), lhs, rhs));
+    for (const auto &t: {m_eqs, m_eqs_erased}) {
+        for (const auto &eq: t) { // display_equation(std::cout, eq);
+            get_context().set_underapproximation_flag_to_true();
+            // if(!m_flattened_eqids.contains(eq.id())) {
+            //     m_flattened_eqids.push_back(eq.id());
+            std::vector<std::tuple<formula_type, unsigned, expr_ref_vector, expr_ref_vector>> eqs;
+            eqs.push_back(std::make_tuple(EQ, eq.id(), eq.ls, eq.rs));
+            for (const auto &terms: {eq.ls, eq.rs}) {
+                for (const auto &term: terms) {
+                    if (ensure_enode(term)->get_root() != ensure_enode(term)) {
+                        expr_ref_vector lhs(m);
+                        m_util.str.get_concat_units(ensure_enode(term)->get_root()->get_expr(), lhs);
+                        expr_ref_vector rhs(m);
+                        m_util.str.get_concat_units(term, rhs);
+                        eqs.push_back(std::make_tuple(ENODE, ensure_enode(term)->get_expr_id(), lhs, rhs));
+                    }
                 }
             }
-        }
-        for (const auto &p: eqs) {
-            formula_type type = std::get<0>(p);
-            unsigned id = std::get<1>(p);
-            const expr_ref_vector &lhs = std::get<2>(p);
-            const expr_ref_vector &rhs = std::get<3>(p);
+            for (const auto &p: eqs) {
+                formula_type type = std::get<0>(p);
+                unsigned id = std::get<1>(p);
+                const expr_ref_vector &lhs = std::get<2>(p);
+                const expr_ref_vector &rhs = std::get<3>(p);
 
-            from_word_term_to_FA(lhs, size, FA_left);
-            from_word_term_to_FA(rhs, size, FA_right);
+                from_word_term_to_FA(lhs, size, FA_left);
+                from_word_term_to_FA(rhs, size, FA_right);
 
-            DEBUG("fc","FA left: " << FA_left <<"\n";);
-            DEBUG("fc","FA right: " << FA_right <<"\n";);
+                DEBUG("fc","FA left: " << FA_left <<"\n";);
+                DEBUG("fc","FA right: " << FA_right <<"\n";);
 
-            for (unsigned i = 0; i < FA_left.size(); i++) {
-                for (unsigned j = 0; j < FA_right.size(); j++) {
-                    // 1st: for each possibly valid sync loop, the two characters on that loop must be the same.
-                    add_axiom.append(if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(type, id, i, j));
+                for (unsigned i = 0; i < FA_left.size(); i++) {
+                    for (unsigned j = 0; j < FA_right.size(); j++) {
+                        // 1st: for each possibly valid sync loop, the two characters on that loop must be the same.
+                        add_axiom.append(if_a_loop_is_taken_the_two_characters_on_its_label_should_be_equal(type, id, i, j));
 
-                    // 2nd: only at most one in-coming edge of one state can be selected.
-                    add_axiom.append(only_at_most_one_incoming_edge_of_one_state_can_be_selected(type, id, i, j));
+                        // 2nd: only at most one in-coming edge of one state can be selected.
+                        add_axiom.append(only_at_most_one_incoming_edge_of_one_state_can_be_selected(type, id, i, j));
 
-                    // 3rd: only at most one out-going edge of one state can be selected.
-                    add_axiom.append(only_at_most_one_outgoing_edge_of_one_state_can_be_selected(type, id, i, j));
+                        // 3rd: only at most one out-going edge of one state can be selected.
+                        add_axiom.append(only_at_most_one_outgoing_edge_of_one_state_can_be_selected(type, id, i, j));
 
-                    // 4th: selection of self edges or out-going edges implies selection of in-coming edges
-                    add_axiom.append(selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(type, id, i, j));
+                        // 4th: selection of self edges or out-going edges implies selection of in-coming edges
+                        add_axiom.append(selection_of_self_edge_or_outgoing_edges_implies_selection_of_incoming_edges(type, id, i, j));
+                    }
                 }
+
+                // 5th: at least one in-coming edge of final state should be selected.
+                add_axiom.append(at_least_one_incoming_edge_of_final_state_should_be_selected(type, id));
+
+                // 6th: sum of edges for a single loop on the PFA must be mapped back to the original FA.
+                add_axiom.append(sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(type, id));
+
+                // 7th: len(x) == sum_i { len(x_i) * times(x_i) }
+                add_axiom.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(lhs, size));
+                add_axiom.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(rhs, size));
             }
-
-            // 5th: at least one in-coming edge of final state should be selected.
-            add_axiom.append(at_least_one_incoming_edge_of_final_state_should_be_selected(type, id));
-
-            // 6th: sum of edges for a single loop on the PFA must be mapped back to the original FA.
-            add_axiom.append(sum_of_edges_for_a_single_loop_on_the_PFA_must_be_mapped_back_to_the_original_FA(type, id));
-
-            // 7th: len(x) == sum_i { len(x_i) * times(x_i) }
-            add_axiom.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(lhs, size));
-            add_axiom.append(length_of_string_variable_equals_sum_of_loop_length_multiplied_by_loop_times(rhs, size));
         }
     }
     return add_axiom;
@@ -4466,6 +4468,7 @@ void theory_seq::push_scope_eh() {
     m_trail_stack.push_scope();
     m_trail_stack.push(value_trail<unsigned>(m_axioms_head));
     m_eqs.push_scope();
+    m_eqs_erased.push_scope();
     m_eqids_pkh.push_scope();
     m_chars_pkh.push_scope();
     m_flattened_eqids.push_scope();
@@ -4486,6 +4489,7 @@ void theory_seq::pop_scope_eh(unsigned num_scopes) {
     m_repids.pop_scope(num_scopes);
     m_exclude.pop_scope(num_scopes);
     m_eqs.pop_scope(num_scopes);
+    m_eqs_erased.pop_scope(num_scopes);
     m_eqids_pkh.pop_scope(num_scopes);
     m_chars_pkh.pop_scope(num_scopes);
     m_flattened_eqids.pop_scope(num_scopes);
