@@ -74,7 +74,12 @@ namespace smt {
         void set_reason_unknown(char const* msg) { m_unknown = msg; }
         void set_progress_callback(progress_callback *callback);
 
-        void set_underapproximation_flag_to_true() { m_is_underapproximation = true; std::cout << "\nm_is_underapproximation" << std::endl; }
+        void set_underapproximation_flag_to_true() {
+            if (!m_is_underapproximation) {
+                m_is_underapproximation = true;
+                std::cout << "\nm_is_underapproximation" << std::endl;
+            }
+        }
 
     protected:
         bool                        m_is_underapproximation; // indicates whether the solver is under approximation.
