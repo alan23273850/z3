@@ -18,7 +18,7 @@ args = parser.parse_args()
 
 if args.mode == '1':
     args.mode = 'small'
-    data = list(os.walk('benchmark_debug')) + list(os.walk('benchmark_handmade')) + list(os.walk('benchmark_sample_50'))
+    data = list(os.walk('benchmark_debug')) + list(os.walk('benchmark_handmade')) + list(os.walk('benchmark_sample_50')) + list(os.walk('benchmark_long_sat'))
 elif args.mode == '2':
     args.mode = 'large'
     data = list(os.walk('trauc'))
