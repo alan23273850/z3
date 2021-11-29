@@ -1537,7 +1537,7 @@ std::vector<int> theory_seq::get_segment_vector() {
     std::vector<int> segment_vector;
     int segment = stoi(gparams::get_value("segment"));
     if (segment <= 0)
-        segment_vector.insert(segment_vector.end(), {1, 2, 4, 8});
+        segment_vector.insert(segment_vector.end(), {1, 2, 4, 6});
     else
         segment_vector.push_back(segment);
     return segment_vector;
