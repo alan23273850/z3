@@ -389,52 +389,56 @@ struct scoped_enable_trace {
     }
 };
 
-void theory_seq::block_current_assignment() {
+void theory_seq::block_current_assignment(bool large) {
     DEBUG("block",__LINE__ << " enter " << __FUNCTION__ << std::endl;)
 
-    expr_ref_vector Assigns(m);
-    ctx.get_assignments(Assigns);
-    add_axiom(~mk_literal(m.mk_and(Assigns)));
-
-    // literal_vector lits;
-    // DEBUG("block", __LINE__ << "[Refinement]\nformulas:\n";)
-    // for (const auto& eq : m_rep) {
-    //     if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
-    //         eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
-    //         expr *const e = m.mk_eq(eq.v, eq.e);
-    //         literal l = ~mk_literal(e);
-    //         lits.push_back(l);
-    //         DEBUG("block", "[m_rep] " << l << "(" << mk_pp(expr_ref(m.mk_not(e), m).get(), m) << ") \n";);
-    //     }
-    // }
-    // for (const auto& we : m_eqs) {
-    //     expr *const e = m.mk_eq(mk_concat(we.ls), mk_concat(we.rs));
-    //     literal l = ~mk_literal(e);
-    //     lits.push_back(l);
-    //     DEBUG("block", "[m_eqs] " << l << "(" << mk_pp(expr_ref(m.mk_not(e), m).get(), m) << ") \n";);
-    // }
-    // for (const auto& wi : m_nqs) {
-    //     expr *const e = m.mk_not(m.mk_eq(wi.l(), wi.r()));
-    //     literal l = ~mk_literal(e);
-    //     lits.push_back(l);
-    //     DEBUG("block", "[m_nqs] " << l << "(" << mk_pp(expr_ref(m.mk_not(e), m).get(), m) << ") \n";);
-    // }
-    // for (const auto& rc : m_rcs) {
-    //     expr *const e = m_util.re.mk_in_re(rc.term(),rc.re());
-    //     literal l = ~mk_literal(e);
-    //     lits.push_back(l);
-    //     DEBUG("block", "[m_rcs] " << l << "(" << mk_pp(expr_ref(m.mk_not(e), m).get(), m) << ") \n";);
-    // }
-    // for (const auto& nc : m_ncs) {
-    //     expr *const e = m.mk_not(nc.contains());
-    //     literal l = ~mk_literal(e);
-    //     lits.push_back(l);
-    //     DEBUG("block", "[m_ncs] " << l << "(" << mk_pp(expr_ref(m.mk_not(e), m).get(), m) << ") \n";);
-    // }
-    // if (!lits.empty()) {
-    //     add_axiom(lits);
-    // }
-    // DEBUG("block", __LINE__ << " leave " << __FUNCTION__ << std::endl;)
+    if (!large) {
+        expr_ref_vector Assigns(m);
+        ctx.get_assignments(Assigns);
+        add_axiom(~mk_literal(m.mk_and(Assigns)));
+    } else {
+        literal_vector lits;
+        DEBUG("block", __LINE__ << "[Refinement]\nformulas:\n";)
+        for (const auto& eq : m_rep) {
+            if (eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
+                eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
+                expr *const e = m.mk_eq(eq.v, eq.e);
+                literal l = ~mk_literal(e);
+                lits.push_back(l);
+                // 還要考慮 enode
+                DEBUG("block", "[m_rep] " << l << "(" << mk_pp(expr_ref(m.mk_not(e), m).get(), m) << ") \n";);
+            }
+        }
+        for (const auto& we : m_eqs) {
+            // 還要考慮 enode
+            expr *const e = m.mk_eq(mk_concat(we.ls), mk_concat(we.rs));
+            literal l = ~mk_literal(e);
+            lits.push_back(l);
+            DEBUG("block", "[m_eqs] " << l << "(" << mk_pp(expr_ref(m.mk_not(e), m).get(), m) << ") \n";);
+        }
+        for (const auto& wi : m_nqs) {
+            expr *const e = m.mk_not(m.mk_eq(wi.l(), wi.r()));
+            literal l = ~mk_literal(e);
+            lits.push_back(l);
+            DEBUG("block", "[m_nqs] " << l << "(" << mk_pp(expr_ref(m.mk_not(e), m).get(), m) << ") \n";);
+        }
+        for (const auto& rc : m_rcs) {
+            expr *const e = m_util.re.mk_in_re(rc.term(),rc.re());
+            literal l = ~mk_literal(e);
+            lits.push_back(l);
+            DEBUG("block", "[m_rcs] " << l << "(" << mk_pp(expr_ref(m.mk_not(e), m).get(), m) << ") \n";);
+        }
+        for (const auto& nc : m_ncs) {
+            expr *const e = m.mk_not(nc.contains());
+            literal l = ~mk_literal(e);
+            lits.push_back(l);
+            DEBUG("block", "[m_ncs] " << l << "(" << mk_pp(expr_ref(m.mk_not(e), m).get(), m) << ") \n";);
+        }
+        if (!lits.empty()) {
+            add_axiom(lits);
+        }
+    }
+    DEBUG("block", __LINE__ << " leave " << __FUNCTION__ << std::endl;)
 }
 
 void theory_seq::print_terms(const expr_ref_vector& terms){
@@ -882,71 +886,74 @@ expr_ref_vector theory_seq::length_of_string_variable_equals_sum_of_loop_length_
     }
     return expv;
 }
-lbool theory_seq::flatten_string_constraints() {
+int theory_seq::flatten_string_constraints() {
+    smt_params fp = get_fparams();
+    fp.m_string_solver = symbol("none");
+    kernel independent_solver(m, fp);
+
+    expr_ref_vector Assigns(m);
+    ctx.get_assignments(Assigns);
+
     std::vector<int> segment_vector = get_segment_vector();
-    bool appear_unknown = false;
     for (int segment : segment_vector) {
-        nonnegative_variables.reset();
         expr_ref_vector add_axiom(m);
+        // for (unsigned i = 0; i < ctx.get_num_asserted_formulas(); ++i) {
+        //     add_axiom.push_back(ctx.get_asserted_formula(i));
+        // }
+        nonnegative_variables.reset();
         add_axiom.append(flatten_int_string_conversions(segment));
         add_axiom.append(flatten_equalities(segment));
         add_axiom.append(flatten_disequalities(segment));
         add_axiom.append(check_contains(segment));
         add_axiom.append(nonnegative_variables);
 
-        smt_params fp = get_fparams();
-        fp.m_string_solver = symbol("none");
-        kernel independent_solver(m, fp);
-        for (unsigned i = 0; i < ctx.get_num_asserted_formulas(); ++i) {
-            add_axiom.push_back(ctx.get_asserted_formula(i));
-        }
-        expr_ref_vector Assigns(m);
-        ctx.get_assignments(Assigns);
-        add_axiom.append(Assigns);
-        // std::cout << ">>>>>>>>>>>>>>>>>>>>>> ";
-        // for (int i=0; i<add_axiom.size(); i++)
-        //     std::cout << mk_pp(add_axiom.get(i), m) << "\n";
-        // std::cout << "======================\n";
-        lbool result;
-        try {
-            result = independent_solver.check(add_axiom);
-            // std::cout << result << "\n";
-        } catch (...) {
-            std::cout << "The independent solver cannot obtain a solution...\n";
-            SASSERT(false);
-        }
-        // std::cout << "<<<<<<<<<<<<<<<<<<<<<<\n";
-        // for (int i=0; i<independent_solver.get_unsat_core_size(); i++)
-        //     std::cout << mk_pp(independent_solver.get_unsat_core_expr(i), m) << "\n";
-        // std::cout << "<<<<<<<<<<<<<<<<<<<<<<\n";
-
-        if (is_debug_enabled("dump_flattening")) // only the last segment will remain
-            dump_flattening(segment, add_axiom);
-
-        if (result == l_true) {
-            if (is_debug_enabled("model")) {
-                model_ref mr;
-                independent_solver.get_context().get_model(mr);
-                model *mdl = mr.get();
-                print_model(mdl, segment);
+        // without current assignments first, and then
+        // with current assignments.
+        for (int flag=0; flag<=1; flag++) {
+            if (flag == 1)
+                add_axiom.append(Assigns);
+            // std::cout << ">>>>>>>>>>>>>>>>>>>>>> ";
+            // for (int i=0; i<add_axiom.size(); i++)
+            //     std::cout << mk_pp(add_axiom.get(i), m) << "\n";
+            // std::cout << "======================\n";
+            lbool result;
+            try {
+                result = independent_solver.check(add_axiom);
+                // std::cout << result << "\n";
+            } catch (...) {
+                std::cout << "The independent solver cannot obtain a solution...\n";
+                SASSERT(false);
             }
-            return l_true;
-        }
-        else if (result == l_false) {
-            continue;
-            // std::cout << "UNSAT core:\n";
-            // for (unsigned i=0; i<indp_solver.m_kernel.get_unsat_core_size(); i++) {
-            //     std::cout << mk_pp(indp_solver.m_kernel.get_unsat_core_expr(i), m) << std::endl;
-            // }
-        }
-        else {
-            appear_unknown = true;
-            continue;
-            // SASSERT(false);
+            // std::cout << "<<<<<<<<<<<<<<<<<<<<<<\n";
+            // for (int i=0; i<independent_solver.get_unsat_core_size(); i++)
+            //     std::cout << mk_pp(independent_solver.get_unsat_core_expr(i), m) << "\n";
+            // std::cout << "<<<<<<<<<<<<<<<<<<<<<<\n";
+
+            if (is_debug_enabled("dump_flattening")) // only the last segment will remain
+                dump_flattening(segment, add_axiom);
+
+            if (result == l_true) {
+                if (flag == 0) continue; // SAT without current assignments may be fake.
+                if (is_debug_enabled("model")) {
+                    model_ref mr;
+                    independent_solver.get_context().get_model(mr);
+                    model *mdl = mr.get();
+                    print_model(mdl, segment);
+                }
+                return 1; // SAT with current assignments is complete.
+            } else if (result == l_false) {
+                // std::cout << "UNSAT core:\n";
+                // for (unsigned i=0; i<indp_solver.m_kernel.get_unsat_core_size(); i++) {
+                //     std::cout << mk_pp(indp_solver.m_kernel.get_unsat_core_expr(i), m) << std::endl;
+                // }
+                if (segment == segment_vector.back()) // the final iteration, assuming segment_vector is in ascending order
+                    return 2 + flag;
+                if (flag == 0) // More axioms won't flip the UNSAT. Proceed to the next segment directly.
+                    break;
+            }
         }
     }
-    if (appear_unknown) return l_undef;
-    return l_false;
+    return 0;
 }
 
 /** \brief
@@ -1635,15 +1642,15 @@ final_check_status theory_seq::final_check_eh() {
 
     if (is_debug_enabled("assignment")) ctx.display_assignment(std::cout);
 
-    lbool result = flatten_string_constraints();
-    if (result == l_true) {
+    int result = flatten_string_constraints();
+    if (result == 1) { // SAT
         return FC_DONE;
-    } else if (result == l_undef) {
+    } else if (result == 0) { // UNKNOWN
         // get_context().set_underapproximation_flag_to_true();
         block_current_assignment();
         return FC_CONTINUE;
-    } else { SASSERT(result == l_false);
-        block_current_assignment();
+    } else { // UNSAT: SASSERT(result == l_false);
+        block_current_assignment(result == 2);
         return FC_CONTINUE;
     }
 
