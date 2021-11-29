@@ -405,16 +405,38 @@ void theory_seq::block_current_assignment(bool large) {
                 expr *const e = m.mk_eq(eq.v, eq.e);
                 literal l = ~mk_literal(e);
                 lits.push_back(l);
-                // 還要考慮 enode
                 DEBUG("block", "[m_rep] " << l << "(" << mk_pp(expr_ref(m.mk_not(e), m).get(), m) << ") \n";);
+                expr_ref_vector lhs(m);
+                m_util.str.get_concat_units(eq.v, lhs);
+                expr_ref_vector rhs(m);
+                m_util.str.get_concat_units(eq.e, rhs);
+                for (const auto &terms: {lhs, rhs}) {
+                    for (const auto &term: terms) {
+                        if (ensure_enode(term)->get_root() != ensure_enode(term)) {
+                            expr *const e = m.mk_eq(ensure_enode(term)->get_root()->get_expr(), term);
+                            literal l = ~mk_literal(e);
+                            lits.push_back(l);
+                            DEBUG("block", "[enode] " << l << "(" << mk_pp(expr_ref(m.mk_not(e), m).get(), m) << ") \n";);
+                        }
+                    }
+                }
             }
         }
         for (const auto& we : m_eqs) {
-            // 還要考慮 enode
             expr *const e = m.mk_eq(mk_concat(we.ls), mk_concat(we.rs));
             literal l = ~mk_literal(e);
             lits.push_back(l);
             DEBUG("block", "[m_eqs] " << l << "(" << mk_pp(expr_ref(m.mk_not(e), m).get(), m) << ") \n";);
+            for (const auto &terms: {we.ls, we.rs}) {
+                for (const auto &term: terms) {
+                    if (ensure_enode(term)->get_root() != ensure_enode(term)) {
+                        expr *const e = m.mk_eq(ensure_enode(term)->get_root()->get_expr(), term);
+                        literal l = ~mk_literal(e);
+                        lits.push_back(l);
+                        DEBUG("block", "[enode] " << l << "(" << mk_pp(expr_ref(m.mk_not(e), m).get(), m) << ") \n";);
+                    }
+                }
+            }
         }
         for (const auto& wi : m_nqs) {
             expr *const e = m.mk_not(m.mk_eq(wi.l(), wi.r()));
@@ -481,7 +503,8 @@ void theory_seq::print_formulas(zstring msg){
 
     }
     for (auto const& eq:m_rep) {
-        if(eq.v && eq.v->get_sort()==m_util.mk_string_sort()) {
+        if(eq.v && eq.v->get_sort()==m_util.mk_string_sort() &&
+           eq.e && eq.e->get_sort()==m_util.mk_string_sort()) {
             expr_ref_vector terms(m);
             m_util.str.get_concat_units(eq.e, terms);
             print_terms(terms);
@@ -894,31 +917,37 @@ int theory_seq::flatten_string_constraints() {
     expr_ref_vector Assigns(m);
     ctx.get_assignments(Assigns);
 
+    int max_flag = 0;
     std::vector<int> segment_vector = get_segment_vector();
     for (int segment : segment_vector) {
-        expr_ref_vector add_axiom(m);
+        // expr_ref_vector add_axiom(m);
         // for (unsigned i = 0; i < ctx.get_num_asserted_formulas(); ++i) {
         //     add_axiom.push_back(ctx.get_asserted_formula(i));
         // }
         nonnegative_variables.reset();
-        add_axiom.append(flatten_int_string_conversions(segment));
-        add_axiom.append(flatten_equalities(segment));
-        add_axiom.append(flatten_disequalities(segment));
-        add_axiom.append(check_contains(segment));
-        add_axiom.append(nonnegative_variables);
+        independent_solver.reset();
+        independent_solver.assert_expr(flatten_int_string_conversions(segment));
+        independent_solver.assert_expr(flatten_equalities(segment));
+        independent_solver.assert_expr(flatten_disequalities(segment));
+        independent_solver.assert_expr(check_contains(segment));
+        independent_solver.assert_expr(nonnegative_variables);
 
         // without current assignments first, and then
         // with current assignments.
-        for (int flag=0; flag<=1; flag++) {
-            if (flag == 1)
-                add_axiom.append(Assigns);
+        for (int flag=max_flag; flag<=1; flag++) {
             // std::cout << ">>>>>>>>>>>>>>>>>>>>>> ";
             // for (int i=0; i<add_axiom.size(); i++)
             //     std::cout << mk_pp(add_axiom.get(i), m) << "\n";
             // std::cout << "======================\n";
             lbool result;
             try {
-                result = independent_solver.check(add_axiom);
+                if (flag == 1) {
+                    max_flag = 1;
+                    result = independent_solver.check(Assigns);
+                } else {
+                    result = independent_solver.check();
+                }
+                // result = independent_solver.check(add_axiom);
                 // std::cout << result << "\n";
             } catch (...) {
                 std::cout << "The independent solver cannot obtain a solution...\n";
@@ -929,8 +958,8 @@ int theory_seq::flatten_string_constraints() {
             //     std::cout << mk_pp(independent_solver.get_unsat_core_expr(i), m) << "\n";
             // std::cout << "<<<<<<<<<<<<<<<<<<<<<<\n";
 
-            if (is_debug_enabled("dump_flattening")) // only the last segment will remain
-                dump_flattening(segment, add_axiom);
+            // if (is_debug_enabled("dump_flattening")) // only the last segment will remain
+            //     dump_flattening(segment, add_axiom);
 
             if (result == l_true) {
                 if (flag == 0) continue; // SAT without current assignments may be fake.
