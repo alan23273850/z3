@@ -1,0 +1,7 @@
+(set-logic ALL)
+(declare-const script String)
+(declare-const output String)
+(assert (str.contains output "$: command not found"))
+(check-sat)
+(get-value (script))
+(get-value (output))

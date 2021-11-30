@@ -1,0 +1,6 @@
+(set-logic ALL)
+(declare-const output String)
+(assert (not (str.contains output "trace: alias expansion:")))
+(assert (str.contains output "Use -f if you really want to add them."))
+(check-sat)
+(get-value (output))

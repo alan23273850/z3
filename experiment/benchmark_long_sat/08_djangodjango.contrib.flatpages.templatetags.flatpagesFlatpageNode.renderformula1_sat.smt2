@@ -1,0 +1,7 @@
+(set-logic ALL)
+(declare-const self String)
+(declare-const context String)
+(assert (str.contains context "request"))
+(check-sat)
+(get-value (self))
+(get-value (context))

@@ -1,0 +1,5 @@
+(set-logic ALL)
+(declare-const options String)
+(assert (str.contains options "respectcase"))
+(check-sat)
+(get-value (options))

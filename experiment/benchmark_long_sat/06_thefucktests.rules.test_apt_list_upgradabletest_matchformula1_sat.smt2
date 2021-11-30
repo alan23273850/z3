@@ -1,0 +1,5 @@
+(set-logic ALL)
+(declare-const output String)
+(assert (str.contains output "apt list --upgradable"))
+(check-sat)
+(get-value (output))

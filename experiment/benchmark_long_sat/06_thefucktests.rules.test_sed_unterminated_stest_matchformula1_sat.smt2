@@ -1,0 +1,5 @@
+(set-logic ALL)
+(declare-const sed_unterminated_s String)
+(assert (str.contains sed_unterminated_s "unterminated `s' command"))
+(check-sat)
+(get-value (sed_unterminated_s))

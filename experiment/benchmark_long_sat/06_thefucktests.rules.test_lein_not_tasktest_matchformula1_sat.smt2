@@ -1,0 +1,5 @@
+(set-logic ALL)
+(declare-const is_not_task String)
+(assert (str.contains is_not_task "is not a task. See 'lein help'"))
+(check-sat)
+(get-value (is_not_task))

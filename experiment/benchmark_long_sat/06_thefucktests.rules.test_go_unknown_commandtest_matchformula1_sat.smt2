@@ -1,0 +1,5 @@
+(set-logic ALL)
+(declare-const build_misspelled_output String)
+(assert (str.contains build_misspelled_output "unknown command"))
+(check-sat)
+(get-value (build_misspelled_output))

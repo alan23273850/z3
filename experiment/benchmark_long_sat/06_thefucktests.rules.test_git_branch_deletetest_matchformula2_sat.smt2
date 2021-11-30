@@ -1,0 +1,6 @@
+(set-logic ALL)
+(declare-const output String)
+(assert (not (str.contains output "trace: alias expansion:")))
+(assert (str.contains output "If you are sure you want to delete it"))
+(check-sat)
+(get-value (output))

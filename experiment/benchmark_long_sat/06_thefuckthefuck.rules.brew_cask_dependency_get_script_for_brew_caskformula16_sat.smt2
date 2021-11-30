@@ -1,0 +1,8 @@
+(set-logic ALL)
+(declare-const output String)
+(assert (not (< (str.len output) 0)))
+(assert (= (+ 0 (str.indexof output "\u{a}" 0)) (- 1)))
+(assert (not (< (str.len output) 0)))
+(assert (str.prefixof "brew cask install" output))
+(check-sat)
+(get-value (output))

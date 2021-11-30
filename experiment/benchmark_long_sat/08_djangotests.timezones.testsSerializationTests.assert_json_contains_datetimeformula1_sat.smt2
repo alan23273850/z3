@@ -1,0 +1,7 @@
+(set-logic ALL)
+(declare-const json String)
+(declare-const dt String)
+(assert (str.contains json """fields"": {""dt"": """"}"))
+(check-sat)
+(get-value (json))
+(get-value (dt))

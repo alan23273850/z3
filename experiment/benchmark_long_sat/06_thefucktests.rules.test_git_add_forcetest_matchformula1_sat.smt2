@@ -1,0 +1,5 @@
+(set-logic ALL)
+(declare-const output String)
+(assert (str.contains output "trace: alias expansion:"))
+(check-sat)
+(get-value (output))

@@ -1,0 +1,6 @@
+(set-logic ALL)
+(declare-const mistype_response String)
+(assert (not (str.contains mistype_response "trace: alias expansion:")))
+(assert (str.contains mistype_response "Did you mean this?"))
+(check-sat)
+(get-value (mistype_response))

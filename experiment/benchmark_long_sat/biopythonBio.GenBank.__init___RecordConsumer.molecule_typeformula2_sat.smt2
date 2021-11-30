@@ -1,0 +1,6 @@
+(set-logic ALL)
+(declare-const mol_type String)
+(assert (not (= mol_type "")))
+(assert (str.contains mol_type "circular"))
+(check-sat)
+(get-value (mol_type))

@@ -1,0 +1,5 @@
+(set-logic ALL)
+(declare-const DATABASES String)
+(assert (str.contains DATABASES "default"))
+(check-sat)
+(get-value (DATABASES))

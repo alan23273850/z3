@@ -1,0 +1,5 @@
+(set-logic ALL)
+(declare-const cmd String)
+(assert (str.contains cmd "--extract"))
+(check-sat)
+(get-value (cmd))

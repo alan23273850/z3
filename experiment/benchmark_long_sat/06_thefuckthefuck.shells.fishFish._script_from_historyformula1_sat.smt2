@@ -1,0 +1,5 @@
+(set-logic ALL)
+(declare-const line String)
+(assert (str.contains line "- cmd: "))
+(check-sat)
+(get-value (line))

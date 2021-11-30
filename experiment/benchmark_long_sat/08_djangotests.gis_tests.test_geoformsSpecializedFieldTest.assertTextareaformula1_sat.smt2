@@ -1,0 +1,7 @@
+(set-logic ALL)
+(declare-const geom String)
+(declare-const rendered String)
+(assert (str.contains rendered "<textarea "))
+(check-sat)
+(get-value (geom))
+(get-value (rendered))

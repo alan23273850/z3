@@ -1,0 +1,6 @@
+(set-logic ALL)
+(declare-const database_name String)
+(assert (not (= database_name ":memory:")))
+(assert (str.contains database_name "mode=memory"))
+(check-sat)
+(get-value (database_name))
