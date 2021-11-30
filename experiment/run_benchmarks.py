@@ -22,6 +22,8 @@ if args.mode == '1':
 elif args.mode == '2':
     args.mode = 'large'
     data = list(os.walk('trauc'))
+else:
+    data = list(os.walk(args.mode))
 
 lock = Lock()
 semaphore = Semaphore(args.thread)
