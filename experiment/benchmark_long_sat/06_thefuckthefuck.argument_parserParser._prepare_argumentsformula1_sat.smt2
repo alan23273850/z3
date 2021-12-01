@@ -1,0 +1,5 @@
+(set-logic ALL)
+(declare-const argv String)
+(assert (str.contains argv "THEFUCK_ARGUMENT_PLACEHOLDER"))
+(check-sat)
+(get-value (argv))

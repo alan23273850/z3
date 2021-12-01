@@ -1,0 +1,8 @@
+(set-logic ALL)
+(declare-const template_string String)
+(assert (not (< (str.len template_string) 0)))
+(assert (= (+ 0 (str.indexof template_string "{{% blocktranslate " 0)) (- 1)))
+(assert (not (< (str.len (str.++ "" template_string)) 0)))
+(assert (not (= (+ 0 (str.indexof (str.++ "" template_string) "{{% endblocktranslate %}}" 0)) (- 1))))
+(check-sat)
+(get-value (template_string))

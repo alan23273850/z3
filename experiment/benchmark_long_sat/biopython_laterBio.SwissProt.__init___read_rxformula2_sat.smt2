@@ -1,0 +1,8 @@
+(set-logic ALL)
+(declare-const reference String)
+(declare-const value String)
+(assert (not (< (str.len value) 0)))
+(assert (not (= (+ 0 (str.indexof value " [NCBI, ExPASy, Israel, Japan]" 0)) (- 1))))
+(check-sat)
+(get-value (reference))
+(get-value (value))

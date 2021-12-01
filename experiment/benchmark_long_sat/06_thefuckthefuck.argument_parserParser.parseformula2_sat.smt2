@@ -1,0 +1,6 @@
+(set-logic ALL)
+(declare-const argv String)
+(assert (not (< (str.len argv) 0)))
+(assert (str.contains (str.substr argv 1 (- (str.len argv) 1)) "THEFUCK_ARGUMENT_PLACEHOLDER"))
+(check-sat)
+(get-value (argv))

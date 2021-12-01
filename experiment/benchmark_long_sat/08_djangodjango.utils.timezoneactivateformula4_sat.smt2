@@ -1,0 +1,8 @@
+(set-logic ALL)
+(declare-const timezone String)
+(assert (not (< (str.len timezone) 0)))
+(assert (= (+ 0 (str.indexof timezone "_plus_" 0)) (- 1)))
+(assert (not (< (str.len (str.++ "" timezone)) 0)))
+(assert (not (= (+ 0 (str.indexof (str.++ "" timezone) "_minus_" 0)) (- 1))))
+(check-sat)
+(get-value (timezone))

@@ -1,0 +1,8 @@
+(set-logic ALL)
+(declare-const stdout String)
+(assert (not (< (str.len stdout) 0)))
+(assert (= (+ 0 (str.indexof stdout "\u{a}" 0)) (- 1)))
+(assert (not (< (str.len stdout) 0)))
+(assert (str.prefixof "where <command> is one of:" stdout))
+(check-sat)
+(get-value (stdout))
